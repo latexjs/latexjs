@@ -1,0 +1,5 @@
+TEXDIR /app/texlive
+TEXMFLOCAL /app/texlive/texmf-local
+TEXMFSYSVAR /app/texlive/texmf-var
+TEXMFSYSCONFIG /app/texlive/texmf-config
+TEXMFVAR /app/texlive/user-texmf-var
