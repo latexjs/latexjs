@@ -8,8 +8,14 @@ var url = require('url')
 // not possible in the current node runtime - so we subprocess and wait on
 // the completion of that.
 function downloadSync(url, dest) {
-  var x = cp.spawnSync(process.execPath, [PATH.resolve(__dirname, 'downloader.js'), url, dest])
-  console.log(x)
+  var x = cp.spawnSync(
+    process.execPath,
+    [PATH.resolve(__dirname, 'downloader.js'), url, dest],
+    { stdio: 'inherit' }
+    )
+  if (x.status !== 0) {
+    throw new Error('Unable to download required file ' + dest + ' exiting.')
+  }
 }
 
 // download('http://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz', 'test.tar.gz')
@@ -17,7 +23,7 @@ function downloadSync(url, dest) {
 // Definition of THINFS - a fork of NODEFS that adds a caching
 // layer.
 var THINFS = {
-    
+
     isWindows: false,
     verbose: false,
 
@@ -33,7 +39,7 @@ var THINFS = {
       }
 
       // THINFS Requires extra information to work which we store
-      // in the mountingNode.mount.ops object to be a good 
+      // in the mountingNode.mount.ops object to be a good
       // Emscripten FS (I hope)...
       var opts = mount.opts
       opts.dbFilePath = PATH.join(opts.cacheDir, 'thinfs_db.json')
@@ -335,7 +341,7 @@ Module.preRun.push(
         THINFS.staticInit(LATEXJS_CACHE_DIR, LATEXJS_REMOTE_URL, LJS_DEBUG)
 
         if (process.env.KPATHSEA_DEBUG !== undefined) {
-            console.log('Passing through KPATHSEA debug settings ' + 
+            console.log('Passing through KPATHSEA debug settings ' +
                         '(KPATHSEA_DEBUG=' + process.env.KPATHSEA_DEBUG + ')')
             ENV.KPATHSEA_DEBUG = process.env.KPATHSEA_DEBUG
         }
@@ -357,12 +363,12 @@ Module.preRun.push(
           FS.mount(NODEFS, { root: process.env.LJS_LOCAL_MOUNT }, '/app/texlive')
         } else {
           // We mount texlive using the 'THINFS' File System.
-          // This FS is specifically designed for Latexjs, and will dynamically pull down 
+          // This FS is specifically designed for Latexjs, and will dynamically pull down
           // individual files from the remote full install of texlive that Latexjs maintains.
-          FS.mount(THINFS, 
-          { 
+          FS.mount(THINFS,
+          {
             cacheDir: LATEXJS_CACHE_DIR,
-            remoteURL: LATEXJS_REMOTE_URL 
+            remoteURL: LATEXJS_REMOTE_URL
           }, '/app/texlive')
         }
 

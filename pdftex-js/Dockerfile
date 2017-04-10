@@ -81,5 +81,6 @@ RUN cp pdftex/build-pdftex/texk/web2c/pdftex pdftex.bc && \
     --pre-js pre.js -o pdftex.js \
     $OBJFILES pdftex.bc && \
     rm locateOBJs.sh pdftex.bc pre.js
-RUN mkdir /root/.latexjs && cp /app/thinfs_db.json /root/.latexjs/
-RUN node pdftex.js --version &&  LJS_DEBUG=1 LJS_LOCAL_MOUNT=/app/texlive/ node pdftex.js -synctex=1 -interaction=nonstopmode -output-format pdf demo.tex
+RUN node pdftex.js --version
+RUN LJS_DEBUG=1 node pdftex.js -synctex=1 -interaction=nonstopmode -output-format pdf demo.tex
+    # LJS_DEBUG=1 LJS_LOCAL_MOUNT=/app/texlive/ node pdftex.js -synctex=1 -interaction=nonstopmode -output-format pdf demo.tex
