@@ -18,8 +18,6 @@ function downloadSync(url, dest) {
   }
 }
 
-// download('http://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz', 'test.tar.gz')
-
 // Definition of THINFS - a fork of NODEFS that adds a caching
 // layer.
 var THINFS = {
@@ -68,8 +66,8 @@ var THINFS = {
       }
       THINFS.opts = opts
 
-      assert(ENVIRONMENT_IS_NODE);
-      return THINFS.createNode(null, '/', THINFS.getModeForDbPath(''), 0);
+      assert(ENVIRONMENT_IS_NODE)
+      return THINFS.createNode(null, '/', THINFS.getModeForDbPath(''), 0)
     },
 
     getMountOpts: function(node) {
@@ -80,10 +78,10 @@ var THINFS = {
     },
 
     pathInDBPartsReversed: function(node) {
-      var parts = [];
+      var parts = []
       while (node.parent !== node) {
-        parts.push(node.name);
-        node = node.parent;
+        parts.push(node.name)
+        node = node.parent
       }
       return {
         parts: parts,
@@ -134,17 +132,17 @@ var THINFS = {
 
     createNode: function (parent, name, mode, dev) {
       if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError(ERRNO_CODES.EINVAL)
       }
-      var node = FS.createNode(parent, name, mode);
-      node.node_ops = THINFS.node_ops;
-      node.stream_ops = THINFS.stream_ops;
-      return node;
+      var node = FS.createNode(parent, name, mode)
+      node.node_ops = THINFS.node_ops
+      node.stream_ops = THINFS.stream_ops
+      return node
     },
 
     getModeForDbPath: function (dbPath) {
       var stat = THINFS.lstatSync(dbPath)
-      return stat.mode;
+      return stat.mode
     },
 
     node_ops: {
@@ -166,32 +164,27 @@ var THINFS = {
         return THINFS.createNode(parent, name, mode)
       },
 
-      readdir: function(node) {
-        var path = THINFS.pathInCache(node);
+      readlink: function(node) {
+        var dbPath = THINFS.pathInCache(node)
         if (THINFS.verbose) {
-          console.log('----------- THINFS.node_ops.readdir: ' + path)
+          console.log('----------- THINFS.node_ops.readlink: ' + dbPath)
         }
-        try {
-          return fs.readdirSync(path);
-        } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+        var stat = THINFS.opts.db.records[dbPath]
+        if (stat !== undefined && stat.link_to !== undefined) {
+          return stat.link_to
+        } else {
+          throw new FS.ErrnoError(ERRNO_CODES.ENOENT)
         }
       },
 
-      readlink: function(node) {
+      // We would need to augment thinfs_db.json if we want to support this
+      // Efficiently (all the info is there, but not in a form ideal for this)
+      readdir: function(node) {
         var path = THINFS.pathInCache(node)
         if (THINFS.verbose) {
-          console.log('----------- THINFS.node_ops.readlink: ' + path)
+          console.log('----------- THINFS.node_ops.readdir: ' + path)
         }
-        try {
-          path = fs.readlinkSync(path);
-          path = NODEJS_PATH.relative(NODEJS_PATH.resolve(node.mount.opts.root), path);
-          return path;
-        } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
-        }
+        throw new Error('readdir is not currently supported in THINFS.')
       },
 
       // THINFS is strictly read-only as far as Emscripten is concerned.
@@ -207,7 +200,7 @@ var THINFS = {
     stream_ops: {
 
       open: function (stream, bailOnError) {
-        var path = THINFS.pathInCache(stream.node);
+        var path = THINFS.pathInCache(stream.node)
         if (THINFS.verbose) {
           console.log('----------- THINFS.stream_ops.open: ' + path)
           if (bailOnError) {
@@ -216,7 +209,7 @@ var THINFS = {
         }
         try {
           if (FS.isFile(stream.node.mode)) {
-            stream.nfd = fs.openSync(path, NODEFS.flagsToPermissionString(stream.flags));
+            stream.nfd = fs.openSync(path, NODEFS.flagsToPermissionString(stream.flags))
           }
         } catch (e) {
           if (bailOnError === undefined) {
@@ -232,8 +225,8 @@ var THINFS = {
             // go again, but only once!
             return THINFS.stream_ops.open(stream, true)
           }
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          if (!e.code) throw e
+          throw new FS.ErrnoError(ERRNO_CODES[e.code])
         }
       },
 
@@ -243,11 +236,11 @@ var THINFS = {
         }
         try {
           if (FS.isFile(stream.node.mode) && stream.nfd) {
-            fs.closeSync(stream.nfd);
+            fs.closeSync(stream.nfd)
           }
         } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          if (!e.code) throw e
+          throw new FS.ErrnoError(ERRNO_CODES[e.code])
         }
       },
 
@@ -258,44 +251,44 @@ var THINFS = {
         if (length === 0) return 0; // node errors on 0 length reads
 
         // FIXME this is terrible.
-        var nbuffer = new Buffer(length);
-        var res;
+        var nbuffer = new Buffer(length)
+        var res
         try {
-          res = fs.readSync(stream.nfd, nbuffer, 0, length, position);
+          res = fs.readSync(stream.nfd, nbuffer, 0, length, position)
         } catch (e) {
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(ERRNO_CODES[e.code])
         }
         if (res > 0) {
           for (var i = 0; i < res; i++) {
-            buffer[offset + i] = nbuffer[i];
+            buffer[offset + i] = nbuffer[i]
           }
         }
-        return res;
+        return res
       },
 
       llseek: function (stream, offset, whence) {
         if (THINFS.verbose) {
           console.log('----------- THINFS.stream_ops.llseek: ' + THINFS.pathInCache(stream.node))
         }
-        var position = offset;
+        var position = offset
         if (whence === 1) {  // SEEK_CUR.
-          position += stream.position;
+          position += stream.position
         } else if (whence === 2) {  // SEEK_END.
           if (FS.isFile(stream.node.mode)) {
             try {
-              var stat = fs.fstatSync(stream.nfd);
-              position += stat.size;
+              var stat = fs.fstatSync(stream.nfd)
+              position += stat.size
             } catch (e) {
-              throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+              throw new FS.ErrnoError(ERRNO_CODES[e.code])
             }
           }
         }
 
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError(ERRNO_CODES.EINVAL)
         }
 
-        return position;
+        return position
       },
 
       // THINFS is strictly read-only as far as Emscripten is concerned.
@@ -364,7 +357,7 @@ Module.preRun.push(
         }
 
         // We completely work in the /app/ dir to avoid clashing with the emscripten root
-        FS.mkdir('/app');
+        FS.mkdir('/app')
 
         // Trick the program into thinking it is pdflatex.
         // TODO we can probably avoid this hack...
