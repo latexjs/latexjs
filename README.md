@@ -68,3 +68,18 @@ sys	0m0.360s
 which is 3.2x slower.
 
 This suggests that actually the warm up of the JIT is a significant factor - the longer we run for, we amortise this cost and we approach a 3x perf penalty.
+
+
+
+#### Deployment
+
+```
+docker pull latexjs/latexjs
+docker stop latexjs
+docker rm latexjs
+docker run --name=latexjs --restart=always -d -p 80:80 latexjs/latexjs
+```
+or
+```
+docker pull latexjs/latexjs && docker stop latexjs && docker rm latexjs && docker run --name=latexjs --restart=always -d -p 80:80 latexjs/latexjs
+```

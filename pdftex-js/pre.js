@@ -97,19 +97,12 @@ var THINFS = {
       return PATH.join.apply(null, parts)
     },
 
-    pathInCache: function (node, returnMountOpts) {
+    pathInCache: function (node) {
       var x = THINFS.pathInDBPartsReversed(node)
       x.parts.push(x.mountNode.mount.opts.cacheDir)
       x.parts.reverse()
       var path = PATH.join.apply(null, x.parts)
-      if (returnMountOpts) {
-        return {
-          path: path,
-          mountOpts: x.mountNode.mount.opts
-        }
-      } else {
-        return path
-      }
+      return path
     },
 
     synthesizeStat: function(stat, defaults) {
@@ -131,7 +124,6 @@ var THINFS = {
 
     // mirrors fs.lstatSync, but using the local stat database.
     lstatSync: function(dbPath) {
-      console.log('lstatsync: ' + dbPath)
       var stat = THINFS.opts.db.records[dbPath]
       if (stat !== undefined) {
         return THINFS.synthesizeStat(stat, THINFS.opts.db.default.values)
@@ -151,7 +143,6 @@ var THINFS = {
     },
 
     getModeForDbPath: function (dbPath) {
-      console.log('THINFS.getMode(' + dbPath  + ')')
       var stat = THINFS.lstatSync(dbPath)
       return stat.mode;
     },
@@ -159,21 +150,27 @@ var THINFS = {
     node_ops: {
 
       getattr: function(node) {
-        var dbPath = THINFS.pathInDB(node);
-        console.log('----------- THINFS.getattr: ' + dbPath)
+        var dbPath = THINFS.pathInDB(node)
+        if (THINFS.verbose) {
+          console.log('----------- THINFS.node_ops.getattr: ' + dbPath)
+        }
         return THINFS.lstatSync(dbPath)
       },
 
       lookup: function (parent, name) {
-        var dbPath = PATH.join2(THINFS.pathInDB(parent), name);
-        console.log('----------- lookup: ' + dbPath)
-        var mode = THINFS.getModeForDbPath(dbPath);
-        return THINFS.createNode(parent, name, mode);
+        var dbPath = PATH.join2(THINFS.pathInDB(parent), name)
+        if (THINFS.verbose) {
+          console.log('----------- THINFS.node_ops.lookup: ' + dbPath)
+        }
+        var mode = THINFS.getModeForDbPath(dbPath)
+        return THINFS.createNode(parent, name, mode)
       },
 
       readdir: function(node) {
         var path = THINFS.pathInCache(node);
-        console.log('----------- readdir: ' + path)
+        if (THINFS.verbose) {
+          console.log('----------- THINFS.node_ops.readdir: ' + path)
+        }
         try {
           return fs.readdirSync(path);
         } catch (e) {
@@ -183,8 +180,10 @@ var THINFS = {
       },
 
       readlink: function(node) {
-        var path = THINFS.pathInCache(node);
-        console.log('----------- readlink: ' + path)
+        var path = THINFS.pathInCache(node)
+        if (THINFS.verbose) {
+          console.log('----------- THINFS.node_ops.readlink: ' + path)
+        }
         try {
           path = fs.readlinkSync(path);
           path = NODEJS_PATH.relative(NODEJS_PATH.resolve(node.mount.opts.root), path);
@@ -208,10 +207,13 @@ var THINFS = {
     stream_ops: {
 
       open: function (stream, bailOnError) {
-        var x = THINFS.pathInCache(stream.node, true);
-        var path = x.path
-        var opts = x.mountOpts
-        console.log('----------- open ' + path)
+        var path = THINFS.pathInCache(stream.node);
+        if (THINFS.verbose) {
+          console.log('----------- THINFS.stream_ops.open: ' + path)
+          if (bailOnError) {
+            console.log('----------- THINFS.stream_ops.open: will error if there is no file present locally.')
+          }
+        }
         try {
           if (FS.isFile(stream.node.mode)) {
             stream.nfd = fs.openSync(path, NODEFS.flagsToPermissionString(stream.flags));
@@ -220,15 +222,25 @@ var THINFS = {
           if (bailOnError === undefined) {
             // Perhaps this file just isn't cached yet..
             // We have permission to try and download if we can.
-            var fileURL = url.resolve(opts.remoteURL, 'thinfs_db.json')
+            var parts = THINFS.pathInDBPartsReversed(stream.node).parts
+            parts.push('texlive')
+            parts.reverse()
+            var fileURL = url.resolve(THINFS.opts.remoteURL, parts.join('/'))
+            console.log('----------- File missing in local cache, triggering download')
+            downloadSync(fileURL, path)
+            console.log('----------- Download successfully completed.')
+            // go again, but only once!
+            return THINFS.stream_ops.open(stream, true)
           }
           if (!e.code) throw e;
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
 
-      close: function (stream) {
-        console.log('----------- close ' + THINFS.pathInCache(stream.node))
+      close: function (stream) {        
+        if (THINFS.verbose) {
+          console.log('----------- THINFS.stream_ops.close: ' + THINFS.pathInCache(stream.node))
+        }
         try {
           if (FS.isFile(stream.node.mode) && stream.nfd) {
             fs.closeSync(stream.nfd);
@@ -240,6 +252,9 @@ var THINFS = {
       },
 
       read: function (stream, buffer, offset, length, position) {
+        if (THINFS.verbose) {
+          console.log('----------- THINFS.stream_ops.read: ' + THINFS.pathInCache(stream.node))
+        }
         if (length === 0) return 0; // node errors on 0 length reads
 
         // FIXME this is terrible.
@@ -259,7 +274,9 @@ var THINFS = {
       },
 
       llseek: function (stream, offset, whence) {
-        console.log('----------- llseek ' + THINFS.pathInCache(stream.node))
+        if (THINFS.verbose) {
+          console.log('----------- THINFS.stream_ops.llseek: ' + THINFS.pathInCache(stream.node))
+        }
         var position = offset;
         if (whence === 1) {  // SEEK_CUR.
           position += stream.position;
