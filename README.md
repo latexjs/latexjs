@@ -74,12 +74,12 @@ This suggests that actually the warm up of the JIT is a significant factor - the
 #### Deployment
 
 ```
-docker pull latexjs/latexjs
+docker pull latexjs/server
 docker stop latexjs
 docker rm latexjs
-docker run --name=latexjs --restart=always -d -p 80:80 latexjs/latexjs
+docker run --name=latexjs --restart=always -d -p 80:80 latexjs/server
 ```
 or
 ```
-docker pull latexjs/latexjs && docker stop latexjs && docker rm latexjs && docker run --name=latexjs --restart=always -d -p 80:80 latexjs/latexjs
+docker pull latexjs/server && docker stop latexjs && docker rm latexjs && docker run --name=latexjs --restart=always -d -p 80:80 latexjs/server
 ```
