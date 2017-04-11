@@ -7,16 +7,16 @@ var url = require('url')
 // This is ridiculous, but we need a synchronous download, and it's seemingly
 // not possible in the current node runtime - so we subprocess and wait on
 // the completion of that.
-function downloadSync(url, dest) {
-  var x = cp.spawnSync(
-    process.execPath,
-    [PATH.resolve(__dirname, 'downloader.js'), url, dest],
-    { stdio: 'inherit' }
-    )
+function downloadSync(downloaderPath, url, dest) {
+  var x = cp.spawnSync(process.execPath, [downloaderPath, url, dest],
+                       { stdio: 'inherit' })
   if (x.status !== 0) {
     throw new Error('Unable to download required file ' + dest + ' exiting.')
   }
 }
+
+// When we build the container we will inject the source for the downloader here
+var DOWNLOADER_SRC = "_INSERT_DOWNLOADER_JS_SRC_"
 
 // Definition of THINFS - a fork of NODEFS that adds a caching
 // layer.
@@ -42,18 +42,21 @@ var THINFS = {
       var opts = mount.opts
       opts.dbFilePath = PATH.join(opts.cacheDir, 'thinfs_db.json')
       opts.dbURL = url.resolve(opts.remoteURL, 'thinfs_db.json')
-
+      opts.downloaderPath = PATH.join(opts.cacheDir, 'thinfs_downloader.js')
       if (!fs.existsSync(opts.cacheDir)) {
         if (THINFS.verbose) {
           console.log('Initializing THINFS cache at: ' + opts.cacheDir)
         }
         fs.mkdirSync(opts.cacheDir)
       }
+      if (!fs.existsSync(opts.downloaderPath)) {
+        fs.writeFileSync(opts.downloaderPath, DOWNLOADER_SRC, { encoding: 'utf8' })
+      }
       if (!fs.existsSync(opts.dbFilePath)) {
         if (THINFS.verbose) {
           console.log('No thinfs_db.json file: re-downloading...')
         }
-        downloadSync(opts.dbURL, opts.dbFilePath)
+        downloadSync(opts.downloaderPath, opts.dbURL, opts.dbFilePath)
       }
 
       opts.db = JSON.parse(fs.readFileSync(opts.dbFilePath, 'utf8'))
@@ -117,6 +120,14 @@ var THINFS = {
         x.parts.push('thinfs')
         x.parts.reverse()
         return url.resolve(x.mountNode.mount.opts.remoteURL, x.parts.join('/'))
+    },
+
+    // Download a file from the remote to the cache.
+    downloadFile: function(node) {
+        var url = THINFS.urlOnRemote(node)
+        var dest = THINFS.pathInCache(node)
+        var opts = THINFS.getMountOpts(node)
+        downloadSync(opts.downloaderPath, url, dest)
     },
 
     synthesizeStat: function(stat, defaults) {
@@ -231,9 +242,8 @@ var THINFS = {
           if (bailOnError === undefined) {
             // Perhaps this file just isn't cached yet..
             // We have permission to try and download if we can.
-            var fileURL = THINFS.urlOnRemote(stream.node)
             console.log('----------- File missing in local cache, triggering download')
-            downloadSync(fileURL, path)
+            THINFS.downloadFile(stream.node)
             console.log('----------- Download successfully completed.')
             // go again, but only once!
             return THINFS.stream_ops.open(stream, true)

@@ -73,14 +73,15 @@ RUN cd pdftex_binaries && \
 RUN cd /app/pdftex/build-pdftex/texk/web2c/lib && make clean && emmake make CC=emcc CFLAGS='-DELIDE_CODE -O3 --profiling-funcs'; exit 0
 
 # We have all the bytecode objects we need ready - all that's left to do is the final compile.
-COPY locateOBJs.sh pre.js downloader.js demo.tex ./
-RUN cp pdftex/build-pdftex/texk/web2c/pdftex pdftex.bc && \
+COPY locateOBJs.sh pre.js downloader.js bake_in_downloader.py demo.tex ./
+RUN python bake_in_downloader.py && \
+    cp pdftex/build-pdftex/texk/web2c/pdftex pdftex.bc && \
 	OBJFILES=`./locateOBJs.sh` && echo Found following objects to compile $OBJFILES && \
 	emcc -v --memory-init-file 0 -O3  --profiling-funcs \ 
     -s TOTAL_MEMORY=134217728 -s INVOKE_RUN=1 \
     --pre-js pre.js -o pdftex.js \
     $OBJFILES pdftex.bc && \
-    rm locateOBJs.sh pdftex.bc pre.js
+    rm locateOBJs.sh pdftex.bc pre.js bake_in_downloader.py downloader.js
 RUN node pdftex.js --version && \
     node pdftex.js -synctex=1 -interaction=nonstopmode -output-format pdf demo.tex && \
     rm -rf demo.* /root/.latexjs
