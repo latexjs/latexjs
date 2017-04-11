@@ -4,19 +4,30 @@ var PATH = require('path')
 var process = require('process')
 var url = require('url')
 
+// When we build the container we will inject the source for the helper here
+var HELPER_SRC = "%%HELPER_JS_SRC%%"
+
+// Once per run we will replace the helper.js file with the latest to ensure it
+// is up to date.
+var HELPER_VALIDATED = false
+
 // This is ridiculous, but we need a synchronous download, and it's seemingly
 // not possible in the current node runtime - so we subprocess and wait on
-// the completion of that.
-function downloadSync(downloaderPath, url, dest) {
-  var x = cp.spawnSync(process.execPath, [downloaderPath, url, dest],
+// the completion of that. For this task we have a small helper file which 
+// we call out to (typically at ~/.latexjs/thinfs_helper.js)
+function downloadSync(helperPath, url, dest) {
+  if (!HELPER_VALIDATED) {
+    console.log('Updating contents of ' + helperPath + ' with latest version...')
+    // We haven't checked if the helper is up to date yet...make sure it is!
+    fs.writeFileSync(helperPath, HELPER_SRC, { encoding: 'utf8' })
+    HELPER_VALIDATED = true
+  }
+  var x = cp.spawnSync(process.execPath, [helperPath, url, dest],
                        { stdio: 'inherit' })
   if (x.status !== 0) {
     throw new Error('Unable to download required file ' + dest + ' exiting.')
   }
 }
-
-// When we build the container we will inject the source for the downloader here
-var DOWNLOADER_SRC = "_INSERT_DOWNLOADER_JS_SRC_"
 
 // Definition of THINFS - a fork of NODEFS that adds a caching
 // layer.
@@ -42,21 +53,18 @@ var THINFS = {
       var opts = mount.opts
       opts.dbFilePath = PATH.join(opts.cacheDir, 'thinfs_db.json')
       opts.dbURL = url.resolve(opts.remoteURL, 'thinfs_db.json')
-      opts.downloaderPath = PATH.join(opts.cacheDir, 'thinfs_downloader.js')
+      opts.helperPath = PATH.join(opts.cacheDir, 'thinfs_helper.js')
       if (!fs.existsSync(opts.cacheDir)) {
         if (THINFS.verbose) {
           console.log('Initializing THINFS cache at: ' + opts.cacheDir)
         }
         fs.mkdirSync(opts.cacheDir)
       }
-      if (!fs.existsSync(opts.downloaderPath)) {
-        fs.writeFileSync(opts.downloaderPath, DOWNLOADER_SRC, { encoding: 'utf8' })
-      }
       if (!fs.existsSync(opts.dbFilePath)) {
         if (THINFS.verbose) {
           console.log('No thinfs_db.json file: re-downloading...')
         }
-        downloadSync(opts.downloaderPath, opts.dbURL, opts.dbFilePath)
+        downloadSync(opts.helperPath, opts.dbURL, opts.dbFilePath)
       }
 
       opts.db = JSON.parse(fs.readFileSync(opts.dbFilePath, 'utf8'))
@@ -127,7 +135,7 @@ var THINFS = {
         var url = THINFS.urlOnRemote(node)
         var dest = THINFS.pathInCache(node)
         var opts = THINFS.getMountOpts(node)
-        downloadSync(opts.downloaderPath, url, dest)
+        downloadSync(opts.helperPath, url, dest)
     },
 
     synthesizeStat: function(stat, defaults) {
