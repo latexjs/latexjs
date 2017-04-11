@@ -1,6 +1,38 @@
-#### Latexjs
+# Latexjs (BETA)
 
-A tiny portable Latex compiler toolkit.
+Latexjs is a complete, cross-platform, self-contained, LaTeX compile toolchain, whose only external dependency is a `node` interpreter.
+
+There is no large monolithic latex distribution to install - Latexjs dynamically downloads **only the files files required for compilation** and stores them in a local cache.
+
+Here's the steps for getting going on any machine (Mac, Windows, or Linux) with `node` available:
+
+1. Download `pdflatex.js`
+2. Run `node pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf main.tex`
+3. The exact files required from a complete texlive install will be downloaded to a `~/.latexjs` cache. For my thesis, that's about 25MB.
+4. That's it. Latexjs will only download new files if they are required (i.e. you compile a different document which uses a new package)
+
+## FAQ
+
+#### How does this work?
+
+Latexjs uses Emscripten to compile TeXLive tools like `pdflatex` and `bibtex` to `asm.js`, a subset of javascript that modern interpreters can run at close to native speeds. 
+
+Emscripten also provides a virtual file system for the compiled binary to run in, which can be controlled. Latexjs uses a custom Emscripten file system called `THINFS`, which handles all file system requests that the TeXLive binaries try to make to the texlive installation folder. `THINFS` dynamically downloads new files as required when a `fs.open` command is intercepted.
+
+#### Surely this can't work for everything a full proper TeXLive install would work for?
+
+The running binary is oblivious to the `THINFS` caching filesystem layer, so we can guarantee full compatibility with a complete texlive install. If something doesn't work with `pdflatex.js` that does work with `pdflatex` from TeXLive, please raise an issue, **because it is a bug**.
+
+#### Why make this?
+
+LaTeX can be a bit of a pain to get going with on a machine. Generally speaking it involves downloading a Latex distribution, of which there are a few, although the big three tend to be:
+
+- MikiTeX (Windows)
+- MacTeX (macOS)
+- TeXLive (Linux)
+
+These distributions have installers, and the way they need to be installed is platform specific. In general they are large monolithic downloads, and are a bit of a pain to keep up to date.
+
 
 
 #### Benchmarks
