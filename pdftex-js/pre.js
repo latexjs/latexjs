@@ -77,6 +77,8 @@ var THINFS = {
       return node.mount.opts
     },
 
+    // Reverse array of path components into DB, e.g.:
+    //     ["jneurosci", "latex", "doc", "texmf-dist"]
     pathInDBPartsReversed: function(node) {
       var parts = []
       while (node.parent !== node) {
@@ -89,18 +91,32 @@ var THINFS = {
       }
     },
 
+    // Abstract (UNIX-like) path used for THINFS DB, e.g.:
+    //     "texmf-dist/doc/latex/jneurosci"
     pathInDB: function(node) {
       var parts = THINFS.pathInDBPartsReversed(node).parts
       parts.reverse()
+      // TODO this should be path.posix to work on Windows...
       return PATH.join.apply(null, parts)
     },
 
+    // Real path on users OS into cache, e.g.:
+    //     "C:\Users\Timmy\.latexjs\thinfs\texmf-dist\doc\latex\jneurosci"
     pathInCache: function (node) {
       var x = THINFS.pathInDBPartsReversed(node)
-      x.parts.push(x.mountNode.mount.opts.cacheDir)
+      x.parts.push('thinfs', x.mountNode.mount.opts.cacheDir)
       x.parts.reverse()
       var path = PATH.join.apply(null, x.parts)
       return path
+    },
+
+    // URL for file on THINFS remote, e.g.:
+    //     "http://texlive.latexjs.org\thinfs\texmf-dist\doc\latex\jneurosci"
+    urlOnRemote: function(node) {
+        var x = THINFS.pathInDBPartsReversed(node)
+        x.parts.push('thinfs')
+        x.parts.reverse()
+        return url.resolve(x.mountNode.mount.opts.remoteURL, x.parts.join('/'))
     },
 
     synthesizeStat: function(stat, defaults) {
@@ -215,10 +231,7 @@ var THINFS = {
           if (bailOnError === undefined) {
             // Perhaps this file just isn't cached yet..
             // We have permission to try and download if we can.
-            var parts = THINFS.pathInDBPartsReversed(stream.node).parts
-            parts.push('texlive')
-            parts.reverse()
-            var fileURL = url.resolve(THINFS.opts.remoteURL, parts.join('/'))
+            var fileURL = THINFS.urlOnRemote(stream.node)
             console.log('----------- File missing in local cache, triggering download')
             downloadSync(fileURL, path)
             console.log('----------- Download successfully completed.')
