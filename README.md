@@ -6,10 +6,13 @@ There is no large monolithic latex distribution to install - Latexjs dynamically
 
 Here's the steps for getting going on any machine (Mac, Windows, or Linux) with `node` available:
 
-1. Download `pdflatex.js`
-2. Run `node pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf main.tex`
-3. The exact files required from a complete texlive install will be downloaded to a `~/.latexjs` cache. For my thesis, that's about 25MB.
-4. That's it. Latexjs will only download new files if they are required (i.e. you compile a different document which uses a new package)
+1. Download [`pdflatex.js`](http://texlive.latexjs.org/apps/pdflatex.js) and [`bibtex.js`](http://texlive.latexjs.org/apps/bibtex.js)
+2. Use these tools exactly as you would normally use `pdflatex` and `bibtex`. For instance, to do a first compilation of a `main.tex` file to PDF, try:
+```
+node pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf main.tex
+```
+3. The exact files required from a complete texlive install will be downloaded to a `~/.latexjs` cache. For my thesis, that's about 35MB.
+4. That's it. Latexjs will only download new files if they are required (i.e. you compile a different document which uses a new package).
 
 ## FAQ
 
