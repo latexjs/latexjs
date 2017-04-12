@@ -68,9 +68,9 @@ docker pull latexjs/server && docker stop latexjs && docker rm latexjs && docker
 
 A huge thank you to [texlive.js](https://github.com/manuels/texlive.js) who were the first to figure out how to Emscripten TeX Live binaries.
 
-## Licencing
+## Licensing
 
-The code in this repository is BSD-licensed, see [LICENCE](./LICENCE). This code includes:
+The code in this repository is BSD-licensed, see [LICENSE](./LICENSE). This code includes:
 
 1. A collection of scripts for downloading and building TeX Live though Emscripten.
 2. A custom Emscripten File System (`THINFS`), which is completely general purpose.
@@ -78,6 +78,6 @@ The code in this repository is BSD-licensed, see [LICENCE](./LICENCE). This code
 It does not include anything from TeX Live.
 
 This code produces a TeX Live instance and a collection of Javascript files which are transpiled from TeX Live sources. These produced artifacts are licensed under the TeX Live licencing.
-For details of this licencing, please see the [LICENSE.TL](http://texlive.latexjs.org/texlive/LICENSE.TL) and [LICENSE.CTAN](http://texlive.latexjs.org/texlive/LICENSE.CTAN) text files.
+For details of this licensing, please see the [LICENSE.TL](http://texlive.latexjs.org/texlive/LICENSE.TL) and [LICENSE.CTAN](http://texlive.latexjs.org/texlive/LICENSE.CTAN) text files.
 
-TL;DR (IANAL) - you can use my code (`THINFS`, these build scripts) under a BSD-licence, but the produced files (e.g. `pdflatex.js`) are licensed under the TeX Live licencing.
+TL;DR (IANAL) - you can use my code (`THINFS`, these build scripts) under a BSD-license, but the produced files (e.g. `pdflatex.js`) are licensed under the TeX Live licencing.
