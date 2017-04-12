@@ -34,8 +34,9 @@ LaTeX can be a bit of a pain to get going with on a machine. Generally speaking 
 - MacTeX (macOS)
 - TeXLive (Linux)
 
-These distributions have installers, and the way they need to be installed is platform specific. In general they are large monolithic downloads, and are a bit of a pain to keep up to date.
+These distributions have installers, and the way they need to be installed is platform specific. In general they are large monolithic downloads, and are a bit of a pain to keep up to date. `Latexjs` provides a simpler solution that works the same on any platform.
 
+A particularly compelling use case is using `Latexjs` within an [Electron](https://electron.atom.io/) app, where an up to date version of `node` is guaranteed to be available.
 
 
 #### Benchmarks
