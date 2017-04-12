@@ -26,6 +26,19 @@ Emscripten also provides a virtual file system for the compiled binary to run in
 
 The running binary is oblivious to the `THINFS` caching filesystem layer, so we can guarantee full compatibility with a complete TeX Live install. If something doesn't work with `pdflatex.js` that does work with `pdflatex` from TeX Live, please raise an issue, **because it is a bug**.
 
+#### OK, but there must be some limitations?
+
+Here's everything I am aware of where behavior would differ from native equivalents:
+
+1. **All files to be processed need to be under the current working directory**. We mount the current working directory inside the Emscripten virtual file system - trying to access above that (`../`) won't work. We can work on fixing this.
+
+That's it for now.
+
+#### How's the performance?
+
+Currently performance is anywhere for [3x-8x slower than native alternatives](./PERFORMANCE.md).
+We haven't focused on optimization yet, and are confident that we can lower that somewhat.
+
 #### Why make this?
 
 LaTeX can be a bit of a pain to get going with on a machine. Generally speaking it involves downloading a Latex distribution, of which there are a few, although the big three tend to be:
@@ -39,75 +52,7 @@ These distributions have installers, and the way they need to be installed is pl
 A particularly compelling use case is using `Latexjs` within an [Electron](https://electron.atom.io/) app, where an up to date version of `node` is guaranteed to be available.
 
 
-#### Benchmarks
-
-```
-time node ./pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf /app/demo.tex
-```
-
-```
-real    0m2.064s
-user    0m1.964s
-sys     0m0.120s
-```
-If built with `--memory-init-file 1`:
-```
-real    0m2.005s
-user    0m1.896s
-sys     0m0.128s
-```
-
-```
-time ./texlive/bin/x86_64-linux/pdflatex -synctex=1 -interaction=nonstopmode -output-format pdf /app/demo.tex
-```
-```
-real    0m0.260s
-user    0m0.220s
-sys     0m0.040s
-```
-8x. ouch.
-
-With a larger file (a 20 page paper of mine)
-```
-time node ./pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf main.tex
-```
-```
-real    0m4.213s
-user    0m4.072s
-sys     0m0.176s
-```
-
-```
-time ./texlive/bin/x86_64-linux/pdflatex -synctex=1 -interaction=nonstopmode -output-format pdf main.tex
-```
-```
-real    0m0.583s
-user    0m0.528s
-sys     0m0.052s
-```
-So we are about a factor of 7x slower...
-
-And on a much larger document (my thesis):
-
-```
-real	0m6.890s
-user	0m6.683s
-sys	0m0.478s
-```
-
-```
-real	0m2.640s
-user	0m1.307s
-sys	0m0.360s
-```
-
-which is 3.2x slower.
-
-This suggests that actually the warm up of the JIT is a significant factor - the longer we run for, we amortise this cost and we approach a 3x perf penalty.
-
-
-
-#### Deployment
+## Deployment
 
 LatexJS is built in a series of Docker images that can be found on [our Docker Hub repo](https://hub.docker.com/r/latexjs/). The final image to run the server is [`latexjs/server`](https://hub.docker.com/r/latexjs/server/). Deployment looks like this:
 ```
