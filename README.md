@@ -11,28 +11,28 @@ Here's the steps for getting going on any machine (Mac, Windows, or Linux) with 
 ```
 node pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf main.tex
 ```
-3. The exact files required from a complete texlive install will be downloaded to a `~/.latexjs` cache. For my thesis, that's about 35MB.
+3. The exact files required from a complete up-to-date TeX Live install will be downloaded to a `~/.latexjs` cache from the Latexjs server. For my thesis, that's about 35MB.
 4. That's it. Latexjs will only download new files if they are required (i.e. you compile a different document which uses a new package).
 
 ## FAQ
 
 #### How does this work?
 
-Latexjs uses Emscripten to compile TeXLive tools like `pdflatex` and `bibtex` to `asm.js`, a subset of javascript that modern interpreters can run at close to native speeds. 
+Latexjs uses Emscripten to compile TeX Live tools like `pdflatex` and `bibtex` to `asm.js`, a subset of javascript that modern interpreters can run at close to native speeds. 
 
-Emscripten also provides a virtual file system for the compiled binary to run in, which can be controlled. Latexjs uses a custom Emscripten file system called `THINFS`, which handles all file system requests that the TeXLive binaries try to make to the texlive installation folder. `THINFS` dynamically downloads new files as required when a `fs.open` command is intercepted.
+Emscripten also provides a virtual file system for the compiled binary to run in, which can be controlled. Latexjs uses a custom Emscripten file system called `THINFS`, which handles all file system requests that the TeX Live binaries try to make to the TeX Live installation folder. `THINFS` dynamically downloads new files as required when a `fs.open` command is intercepted.
 
-#### Surely this can't work for everything a full proper TeXLive install would work for?
+#### Surely this can't work for everything a full proper TeX Live install would work for?
 
-The running binary is oblivious to the `THINFS` caching filesystem layer, so we can guarantee full compatibility with a complete texlive install. If something doesn't work with `pdflatex.js` that does work with `pdflatex` from TeXLive, please raise an issue, **because it is a bug**.
+The running binary is oblivious to the `THINFS` caching filesystem layer, so we can guarantee full compatibility with a complete TeX Live install. If something doesn't work with `pdflatex.js` that does work with `pdflatex` from TeX Live, please raise an issue, **because it is a bug**.
 
 #### Why make this?
 
 LaTeX can be a bit of a pain to get going with on a machine. Generally speaking it involves downloading a Latex distribution, of which there are a few, although the big three tend to be:
 
-- MikiTeX (Windows)
+- MikTeX (Windows)
 - MacTeX (macOS)
-- TeXLive (Linux)
+- TeX Live (Linux)
 
 These distributions have installers, and the way they need to be installed is platform specific. In general they are large monolithic downloads, and are a bit of a pain to keep up to date. `Latexjs` provides a simpler solution that works the same on any platform.
 
@@ -42,7 +42,7 @@ A particularly compelling use case is using `Latexjs` within an [Electron](https
 #### Benchmarks
 
 ```
-time node ./pdftex.js -synctex=1 -interaction=nonstopmode -output-format pdf /app/demo.tex
+time node ./pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf /app/demo.tex
 ```
 
 ```
@@ -69,7 +69,7 @@ sys     0m0.040s
 
 With a larger file (a 20 page paper of mine)
 ```
-time node ./pdftex.js -synctex=1 -interaction=nonstopmode -output-format pdf main.tex
+time node ./pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf main.tex
 ```
 ```
 real    0m4.213s
@@ -109,13 +109,11 @@ This suggests that actually the warm up of the JIT is a significant factor - the
 
 #### Deployment
 
+LatexJS is built in a series of Docker images that can be found on [our Docker Hub repo](https://hub.docker.com/r/latexjs/). The final image to run the server is [`latexjs/server`](https://hub.docker.com/r/latexjs/server/). Deployment looks like this:
 ```
-docker pull latexjs/server
-docker stop latexjs
-docker rm latexjs
 docker run --name=latexjs --restart=always -d -p 80:80 latexjs/server
 ```
-or
+And a one liner for updating:
 ```
 docker pull latexjs/server && docker stop latexjs && docker rm latexjs && docker run --name=latexjs --restart=always -d -p 80:80 latexjs/server
 ```
