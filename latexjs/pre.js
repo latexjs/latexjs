@@ -15,15 +15,18 @@ var HELPER_VALIDATED = false
 // not possible in the current node runtime - so we subprocess and wait on
 // the completion of that. For this task we have a small helper file which 
 // we call out to (typically at ~/.latexjs/thinfs_helper.js)
-function downloadSync(helperPath, url, dest) {
+function downloadSync(helperPath, url, dest, sha256) {
   if (!HELPER_VALIDATED) {
     console.log('Updating contents of ' + helperPath + ' with latest version...')
     // We haven't checked if the helper is up to date yet...make sure it is!
     fs.writeFileSync(helperPath, HELPER_SRC, { encoding: 'utf8' })
     HELPER_VALIDATED = true
   }
-  var x = cp.spawnSync(process.execPath, [helperPath, url, dest],
-                       { stdio: 'inherit' })
+  var args = [helperPath, url, dest]
+  if (sha256 !== undefined) {
+    args.push(sha256)
+  }
+  var x = cp.spawnSync(process.execPath, args, { stdio: 'inherit' })
   if (x.status !== 0) {
     throw new Error('Unable to download required file ' + dest + ' exiting.')
   }
@@ -133,9 +136,10 @@ var THINFS = {
     // Download a file from the remote to the cache.
     downloadFile: function(node) {
         var url = THINFS.urlOnRemote(node)
-        var dest = THINFS.pathInCache(node)
+        var cachePath = THINFS.pathInCache(node)
+        var dbPath = THINFS.pathInDB(node)
         var opts = THINFS.getMountOpts(node)
-        downloadSync(opts.helperPath, url, dest)
+        downloadSync(opts.helperPath, url, cachePath, opts.db.records[dbPath].sha256)
     },
 
     synthesizeStat: function(stat, defaults) {
