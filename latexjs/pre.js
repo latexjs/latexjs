@@ -15,7 +15,7 @@ var HELPER_VALIDATED = false
 // not possible in the current node runtime - so we subprocess and wait on
 // the completion of that. For this task we have a small helper file which 
 // we call out to (typically at ~/.latexjs/thinfs_helper.js)
-function downloadSync(helperPath, url, dest, sha256) {
+function downloadSync(helperPath, url, dest, gzip, sha256) {
   if (!HELPER_VALIDATED) {
     console.log('Updating contents of ' + helperPath + ' with latest version...')
     // We haven't checked if the helper is up to date yet...make sure it is!
@@ -23,6 +23,11 @@ function downloadSync(helperPath, url, dest, sha256) {
     HELPER_VALIDATED = true
   }
   var args = [helperPath, url, dest]
+  if (gzip) {
+    args.push('gzip')
+  } else {
+    args.push('no')
+  }
   if (sha256 !== undefined) {
     args.push(sha256)
   }
@@ -67,7 +72,7 @@ var THINFS = {
         if (THINFS.verbose) {
           console.log('No thinfs_db.json file: re-downloading...')
         }
-        downloadSync(opts.helperPath, opts.dbURL, opts.dbFilePath)
+        downloadSync(opts.helperPath, opts.dbURL, opts.dbFilePath, true)
       }
 
       opts.db = JSON.parse(fs.readFileSync(opts.dbFilePath, 'utf8'))
@@ -139,7 +144,7 @@ var THINFS = {
         var cachePath = THINFS.pathInCache(node)
         var dbPath = THINFS.pathInDB(node)
         var opts = THINFS.getMountOpts(node)
-        downloadSync(opts.helperPath, url, cachePath, opts.db.records[dbPath].sha256)
+        downloadSync(opts.helperPath, url, cachePath, true, opts.db.records[dbPath].sha256)
     },
 
     synthesizeStat: function(stat, defaults) {
