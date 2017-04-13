@@ -14,7 +14,13 @@ RUN wget http://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/Source/texlive-20
 # process of pdftex etc uses some of these binaries, so we make them
 # natively so we can provide them below.
 RUN cd ./texlive_binary_build/texk/web2c && make pdftex && make bibtex
-# 3. Now attemt to make an emscripten build of pdftex - we know this 
+# Move to use the incoming emscripten branches - 
+# Note this generates a MASSIVE file!
+RUN emsdk install sdk-incoming-64bit -j6
+RUN emsdk install emscripten-incoming-64bit
+RUN emsdk activate sdk-incoming-64bit
+ENV PATH /app/emsdk-portable:/app/emsdk-portable/clang/fastcomp/build_incoming_64/bin:/app/emsdk-portable/node/4.1.1_64bit/bin:/app/emsdk-portable/emscripten/incoming:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# 3. Now attempt to make an emscripten build of pdftex - we know this 
 # will fail without the native binaries...
 RUN mkdir texlive_emscripten_build && cd ./texlive_emscripten_build && \
     EMCONFIGURE_JS=0 emconfigure ../texlive-*-source/configure \
@@ -36,30 +42,26 @@ RUN cd /app/texlive_binary_build/texk/web2c/ && \
     cd /app/texlive_emscripten_build/texk/web2c/web2c/ && \
     chmod 777 fixwrites splitup web2c
 RUN cd ./texlive_emscripten_build/texk/web2c && emmake make pdftex \
-        CC=emcc CFLAGS='-DELIDE_CODE -O3 --profiling-funcs' \
+        CC=emcc CFLAGS='-DELIDE_CODE -O3 --profiling' \
+        CPPFLAGS='-DELIDE_CODE -O3 --profiling' \
         -o tangle -o tie -o web2c -o pdftex-pool.c
 RUN cd ./texlive_emscripten_build/texk/web2c && emmake make bibtex \
-        CC=emcc CFLAGS='-DELIDE_CODE -O3 --profiling-funcs' \
+        CC=emcc CFLAGS='-DELIDE_CODE -O3 --profiling' \
+        CPPFLAGS='-DELIDE_CODE -O3 --profiling' \
         -o tangle -o tie -o web2c -o pdftex-pool.c
 # All that's left to do is the final compile for both pdflatex.js and bibtex.js
 COPY pre.js thinfs_helper.js bake_in_thinfs_helper.py demo.tex ./
 RUN python bake_in_thinfs_helper.py && \
     cp ./texlive_emscripten_build/texk/web2c/pdftex pdftex.bc && \
-	emcc -v --memory-init-file 0 -O3 --profiling-funcs \ 
-    -s TOTAL_MEMORY=134217728 -s INVOKE_RUN=1 \
+	emcc -v --memory-init-file 0 -O3 --profiling \ 
+    -s TOTAL_MEMORY=134217728 -s INVOKE_RUN=1 -s WASM=1 \
     --pre-js pre.js -o pdflatex.js pdftex.bc && \
     cp ./texlive_emscripten_build/texk/web2c/bibtex bibtex.bc && \
-	emcc -v --memory-init-file 0 -O3 --profiling-funcs \ 
-    -s TOTAL_MEMORY=134217728 -s INVOKE_RUN=1 \
+	emcc -v --memory-init-file 0 -O3 --profiling \ 
+    -s TOTAL_MEMORY=134217728 -s INVOKE_RUN=1 -s WASM=1 \
     --pre-js pre.js -o bibtex.js bibtex.bc && \
     rm pdftex.bc bibtex.bc pre.js bake_in_thinfs_helper.py thinfs_helper.js
-# Test everything is working.
-RUN node pdflatex.js --version && \
-    node pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf demo.tex && \
-    node bibtex.js --version && \
-    rm -rf demo.* /root/.latexjs
+RUN rm -rf demo.*
 # Clear up all the build dirs (we don't need them)
 # TODO We will squash all this to keep it compact.
 RUN rm -rf texlive-*-source* texlive_binary_build texlive_emscripten_build
-# Tidy up the build apps into their own dir.
-RUN mkdir apps && mv pdflatex.js bibtex.js ./apps/
