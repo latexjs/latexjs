@@ -54,13 +54,9 @@ A particularly compelling use case is using `Latexjs` within an [Electron](https
 
 ## Deployment
 
-LatexJS is built in a series of Docker images that can be found on [our Docker Hub repo](https://hub.docker.com/r/latexjs/). The final image to run the server is [`latexjs/server`](https://hub.docker.com/r/latexjs/server/). Deployment looks like this:
+LatexJS is built in a series of Docker images that can be found on [our Docker Hub repo](https://hub.docker.com/r/latexjs/). The final image to run the server is [`latexjs/server`](https://hub.docker.com/r/latexjs/server/). Deployment (and update) looks like this:
 ```
-docker run --name=latexjs --restart=always -d -p 80:80 latexjs/server
-```
-And a one liner for updating:
-```
-docker pull latexjs/server && docker stop latexjs && docker rm latexjs && docker run --name=latexjs --restart=always -d -p 80:80 latexjs/server
+docker pull latexjs/server && docker stop latexjs || docker rm latexjs || docker run --name=latexjs --restart=always -d -p 80:80 -p 443:443 latexjs/server
 ```
 #### Setting up SSL
 
