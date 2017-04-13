@@ -56,7 +56,7 @@ A particularly compelling use case is using `Latexjs` within an [Electron](https
 
 LatexJS is built in a series of Docker images that can be found on [our Docker Hub repo](https://hub.docker.com/r/latexjs/). The final image to run the server is [`latexjs/server`](https://hub.docker.com/r/latexjs/server/). Deployment (and update) is handled with `docker-compose`:
 ```
-docker compose up -d
+docker-compose pull && docker compose down || docker-compose up -d
 ```
 
 But first a little setup is needed (using DO one-click Docker 16.04)
