@@ -54,16 +54,23 @@ A particularly compelling use case is using `Latexjs` within an [Electron](https
 
 ## Deployment
 
-LatexJS is built in a series of Docker images that can be found on [our Docker Hub repo](https://hub.docker.com/r/latexjs/). The final image to run the server is [`latexjs/server`](https://hub.docker.com/r/latexjs/server/). Deployment looks like this:
+LatexJS is built in a series of Docker images that can be found on [our Docker Hub repo](https://hub.docker.com/r/latexjs/). The final image to run the server is [`latexjs/server`](https://hub.docker.com/r/latexjs/server/). Deployment (and update) looks like this:
 ```
-docker run --name=latexjs --restart=always -d -p 80:80 latexjs/server
+docker pull latexjs/server && docker stop latexjs || docker rm latexjs || docker run --name=latexjs --restart=always -d -p 80:80 -p 443:443 latexjs/server
 ```
-And a one liner for updating:
-```
-docker pull latexjs/server && docker stop latexjs && docker rm latexjs && docker run --name=latexjs --restart=always -d -p 80:80 latexjs/server
-```
+#### Setting up SSL
 
+We use Docker + Let's Encrypt to initially get hold of a cert:
 
+```
+docker run -it --rm -p 443:443 -p 80:80 --name certbot -v "/etc/letsencrypt:/etc/letsencrypt" -v "/var/lib/letsencrypt:/var/lib/letsencrypt" certbot/certbot certonly
+```
+TODO when running our server we need to mount this volume so NGINX can see it (and update config for SSL)
+
+To renew:
+```
+docker run -it --rm -p 443:443 -p 80:80 --name certbot -v "/etc/letsencrypt:/etc/letsencrypt" -v "/var/lib/letsencrypt:/var/lib/letsencrypt" certbot/certbot renew && docker restart latexjs
+```
 ## Acknowledgments
 
 A huge thank you to [texlive.js](https://github.com/manuels/texlive.js) who were the first to figure out how to Emscripten TeX Live binaries.
