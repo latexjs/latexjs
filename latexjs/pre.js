@@ -60,6 +60,7 @@ var THINFS = {
       // Emscripten FS (I hope)...
       var opts = mount.opts
       opts.dbFilePath = PATH.join(opts.cacheDir, 'thinfs_db.json')
+      opts.dbCacheFilePath = PATH.join(opts.cacheDir, 'thinfs_db_cache.json')
       opts.dbURL = url.resolve(opts.remoteURL, 'thinfs_db.json')
       opts.helperPath = PATH.join(opts.cacheDir, 'thinfs_helper.js')
       if (!fs.existsSync(opts.cacheDir)) {
@@ -73,9 +74,24 @@ var THINFS = {
           console.log('No thinfs_db.json file: re-downloading...')
         }
         downloadSync(opts.helperPath, opts.dbURL, opts.dbFilePath, true)
+        if (fs.existsSync(opts.dbCacheFilePath)) {
+          // Remove the cache which will now be outdated.
+          fs.unlinkSync(opts.dbCacheFilePath)
+        }
+        // TODO I should probably clear the `thinfs` dir here too...
+      }
+      if (!fs.existsSync(opts.dbCacheFilePath)) {
+        if (THINFS.verbose) {
+          console.log('No thinfs_db_cache.json file - regenerating...')
+        }
+          var dbCache = JSON.parse(fs.readFileSync(opts.dbFilePath, 'utf8'))
+          delete dbCache.records
+          dbCache.records = {}
+          fs.writeFileSync(opts.dbCacheFilePath, JSON.stringify(dbCache), 'utf8')
       }
 
-      opts.db = JSON.parse(fs.readFileSync(opts.dbFilePath, 'utf8'))
+      // Load the DB cache on launch - we will only load the full DB file if it's necessary.
+      opts.dbCache = JSON.parse(fs.readFileSync(opts.dbCacheFilePath, 'utf8'))
 
       // This is totally gross, but here we attach the mount.opts info to
       // the global THINFS object. Purely doing this to move fast for now,
@@ -138,13 +154,45 @@ var THINFS = {
         return url.resolve(x.mountNode.mount.opts.remoteURL, x.parts.join('/'))
     },
 
+    retrieveDbRecord: function(dbPath, opts) {
+      var record = opts.dbCache.records[dbPath]
+      if (record === undefined) {
+        if (THINFS.verbose) {
+          console.log('thinfs_db_cache miss')
+        }
+        // It could be in the full DB... we'll need to hit it to know.
+        if (opts.db === undefined) {
+          if (THINFS.verbose) {
+            console.log('Reloading full thinfs_db...')
+          }
+          opts.db = JSON.parse(fs.readFileSync(opts.dbFilePath, 'utf8'))
+        }
+
+        // Update the cache entry...
+        var fullRecord = opts.db.records[dbPath]
+        // Note that we store a null to indicate this file doesn't exist.
+        opts.dbCache.records[dbPath] = fullRecord === undefined ? null : fullRecord
+        // ...and save it back out.
+        if (THINFS.verbose) {
+          console.log('saving updated thinfs_db_cache.json')
+        }
+        fs.writeFileSync(opts.dbCacheFilePath, JSON.stringify(opts.dbCache), 'utf8')
+        return fullRecord
+      } else if (record === null) {
+        return undefined
+      } else {
+        return record
+      }
+  },
+
     // Download a file from the remote to the cache.
     downloadFile: function(node) {
         var url = THINFS.urlOnRemote(node)
         var cachePath = THINFS.pathInCache(node)
         var dbPath = THINFS.pathInDB(node)
         var opts = THINFS.getMountOpts(node)
-        downloadSync(opts.helperPath, url, cachePath, true, opts.db.records[dbPath].sha256)
+        var record = THINFS.retrieveDbRecord(dbPath, opts)
+        downloadSync(opts.helperPath, url, cachePath, true, record.sha256)
     },
 
     synthesizeStat: function(stat, defaults) {
@@ -166,9 +214,9 @@ var THINFS = {
 
     // mirrors fs.lstatSync, but using the local stat database.
     lstatSync: function(dbPath) {
-      var stat = THINFS.opts.db.records[dbPath]
+      var stat = THINFS.retrieveDbRecord(dbPath, THINFS.opts)
       if (stat !== undefined) {
-        return THINFS.synthesizeStat(stat, THINFS.opts.db.default.values)
+        return THINFS.synthesizeStat(stat, THINFS.opts.dbCache.default.values)
       } else {
         throw new FS.ErrnoError(ERRNO_CODES.ENOENT)
       }
@@ -213,7 +261,7 @@ var THINFS = {
         if (THINFS.verbose) {
           console.log('----------- THINFS.node_ops.readlink: ' + dbPath)
         }
-        var stat = THINFS.opts.db.records[dbPath]
+        var stat = THINFS.retrieveDbRecord(dbPath, THINFS.opts)
         if (stat !== undefined && stat.link_to !== undefined) {
           return stat.link_to
         } else {
@@ -285,8 +333,8 @@ var THINFS = {
       },
 
       read: function (stream, buffer, offset, length, position) {
-        if (THINFS.verbose) {
-          console.log('----------- THINFS.stream_ops.read: ' + THINFS.pathInCache(stream.node))
+        if (THINFS.verbose && position === 0) {
+          console.log('----------- THINFS.stream_ops.read: (position=0)' + THINFS.pathInCache(stream.node))
         }
         if (length === 0) return 0; // node errors on 0 length reads
 
@@ -434,10 +482,11 @@ Module.preRun.push(
         // We mount the current working directory at /app/working with a traditional
         // Node FS mount. Note that this means we can only compile documents under the CWD.
         FS.mkdir('/app/working')
-        console.log('Mounting host working directory ' + require('path').resolve() + ' at /app/working')
+        if (LJS_DEBUG) {
+          console.log('Mounting host working directory ' + require('path').resolve() + ' at /app/working')
+        }
         FS.mount(NODEFS, { root: '.' }, '/app/working')
         FS.chdir('/app/working')
-
     }
 )
 
