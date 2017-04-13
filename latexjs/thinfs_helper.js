@@ -1,5 +1,5 @@
 var process = require('process')
-var http = require('http')
+var https = require('https')
 var fs = require('fs')
 var path = require('path')
 var crypto = require('crypto')
@@ -20,7 +20,7 @@ function mkdir(dir, mode){
 }
 
 
-function download(url, dest, gz_file, sha256) {
+function download(url, dest, gz_file, sha256, callback) {
     console.log('  Downloading:')
     console.log('  ' + url + ' => ' + dest)
     if (sha256) {
@@ -37,7 +37,7 @@ function download(url, dest, gz_file, sha256) {
     }
     var file = fs.createWriteStream(dest)
 
-    var request = http.get(url, function (response) {
+    var request = https.get(url, function (response) {
 
         var totalLength = response.headers['content-length']
         var processedLength = 0
@@ -57,20 +57,17 @@ function download(url, dest, gz_file, sha256) {
                     console.log('    Expected: ' + sha256)
                     console.log('      Actual: ' + checksum)
                     console.log('  Clearing up compromised file...')
-                    fs.unlinkSync(dest)
-                    console.log('  Exiting with failure code (1)')
-                    process.exit(1)
+                    fs.unlink(dest, function () {
+                        callback('Error: checksum failure.')
+                    })
+                    
                 }
             }
             file.close(function (err) {
                 if (err) {
                     console.log('  Error closing file: ' + err)
-                    console.log('  Exiting with failure code (1)')
-                    process.exit(1)
-                } else {
-                    console.log('  Download finished successfully ' + ((sha256 !== undefined) ? '(checksum validated).' : '(no checksum).'))
-                    process.exit(0)
                 }
+                callback(err)
             })
         })
 
@@ -90,28 +87,44 @@ function download(url, dest, gz_file, sha256) {
         file.on('error', function (err) {
             console.log('  Error downloading file: ' + err)
             console.log('  Deleting corrupted file...')
-            fs.unlinkSync(dest)
-            console.log('  Exiting with failure code (1)')
-            process.exit(1)
+            fs.unlink(dest, function () {
+                callback('Error: Download error.')
+            })
         })
     })
 }
 
-var URL = process.argv[2]
-var DEST = process.argv[3]
-if (process.argv.length >= 5) {
-    GZ_FILE = (process.argv[4] === 'gzip')
-} else {
-    GZ_FILE = false
-}
-if (process.argv.length >= 6) {
-    SHA256 = process.argv[5]
-}
-else {
-    SHA256 = undefined
+
+function downloadCommand(url, dest, compression_type, sha256) {
+    var gz_compressed_file = (compression_type === 'gzip')
+
+    if (gz_compressed_file) {
+        url += '.gz'
+    }
+
+    download(url, dest, gz_compressed_file, sha256, function (err) {
+        if (err) {
+            console.log('  Exiting with failure code (1)')
+            process.exit(1)
+        } else {
+            console.log('  Download finished successfully ' + ((sha256 !== undefined) ? '(checksum validated).' : '(no checksum).'))
+            process.exit(0)
+        }
+    })
 }
 
-if (GZ_FILE) {
-    URL = URL + '.gz'
+var COMMAND_FUNCTION = {
+    'download': downloadCommand
 }
-download(URL, DEST, GZ_FILE, SHA256)
+
+var COMMAND = process.argv[2]
+var ARGS = process.argv.slice(3)
+console.log(ARGS)
+
+var COMMAND_FUNC = COMMAND_FUNCTION[COMMAND]
+
+if (COMMAND_FUNC === undefined) {
+    console.log('Command not understood - options are: ' + Object.keys(COMMAND_FUNCTION).join(', '))
+} else {
+    COMMAND_FUNC.apply(null, ARGS)
+}

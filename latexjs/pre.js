@@ -22,7 +22,7 @@ function downloadSync(helperPath, url, dest, gzip, sha256) {
     fs.writeFileSync(helperPath, HELPER_SRC, { encoding: 'utf8' })
     HELPER_VALIDATED = true
   }
-  var args = [helperPath, url, dest]
+  var args = [helperPath, 'download', url, dest]
   if (gzip) {
     args.push('gzip')
   } else {
@@ -406,7 +406,7 @@ Module.preRun.push(
             console.log('Welcome to the dirty underbelly of the world of Latexjs.')
         }
         var DEFAULT_LATEXJS_CACHE_DIR = path.resolve(os.homedir(), '.latexjs/')
-        var DEFAULT_LATEXJS_REMOTE_URL = 'http://texlive.latexjs.org'
+        var DEFAULT_LATEXJS_REMOTE_URL = 'https://london.latexjs.org'
         var LATEXJS_CACHE_DIR
         var LATEXJS_REMOTE_URL
 
