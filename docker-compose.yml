@@ -1,0 +1,11 @@
+version: "3"
+services:
+  latexjs:
+    image: latexjs/server
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: always
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+    env_file: .env
