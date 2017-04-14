@@ -1,4 +1,4 @@
-with open('thinfs_helper.js', 'rt') as f:
+with open('latex.js', 'rt') as f:
     helper_src = f.readlines()
 
 lines_quoted = ['"{}\\n"'.format(line.rstrip().replace(r'\n', r'\\n')).replace(r'\r', r'\\r')

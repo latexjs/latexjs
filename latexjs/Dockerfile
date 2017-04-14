@@ -41,25 +41,35 @@ RUN cd ./texlive_emscripten_build/texk/web2c && emmake make pdftex \
 RUN cd ./texlive_emscripten_build/texk/web2c && emmake make bibtex \
         CC=emcc CFLAGS='-DELIDE_CODE -O3 --profiling-funcs' \
         -o tangle -o tie -o web2c -o pdftex-pool.c
-# All that's left to do is the final compile for both pdflatex.js and bibtex.js
-COPY pre.js thinfs_helper.js bake_in_thinfs_helper.py demo.tex ./
-RUN python bake_in_thinfs_helper.py && \
+# All that's left to do is the final compile for both pdflatex.js, bibtex.js and kpsewhich.
+COPY pre.js latex.js latexjs.json bake_in_latexjs.py latexmk_config.pl demo.tex ./
+RUN python bake_in_latexjs.py && \
+    \
     cp ./texlive_emscripten_build/texk/web2c/pdftex pdftex.bc && \
-	emcc -v --memory-init-file 0 -O3 --profiling-funcs \ 
+    emcc -v --memory-init-file 0 -O3 --profiling-funcs \ 
     -s TOTAL_MEMORY=134217728 -s INVOKE_RUN=1 \
     --pre-js pre.js -o pdflatex.js pdftex.bc && \
+    \
     cp ./texlive_emscripten_build/texk/web2c/bibtex bibtex.bc && \
 	emcc -v --memory-init-file 0 -O3 --profiling-funcs \ 
     -s TOTAL_MEMORY=134217728 -s INVOKE_RUN=1 \
     --pre-js pre.js -o bibtex.js bibtex.bc && \
-    rm pdftex.bc bibtex.bc pre.js bake_in_thinfs_helper.py thinfs_helper.js
+    \
+    cp ./texlive_emscripten_build/texk/kpathsea/kpsewhich kpsewhich.bc && \
+    emcc -v --memory-init-file 0 -O3 --profiling-funcs \ 
+    -s INVOKE_RUN=1 \
+    --pre-js pre.js -o kpsewhich.js kpsewhich.bc && \
+    \
+    rm pdftex.bc bibtex.bc  kpsewhich.bc pre.js bake_in_latexjs.py latex.js
 # Test everything is working.
 RUN node pdflatex.js --version && \
     node pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf demo.tex && \
     node bibtex.js --version && \
+    node kpsewhich.js --version && \
     rm -rf demo.* /root/.latexjs
 # Clear up all the build dirs (we don't need them)
 # TODO We will squash all this to keep it compact.
 RUN rm -rf texlive-*-source* texlive_binary_build texlive_emscripten_build
 # Tidy up the build apps into their own dir.
-RUN mkdir apps && mv pdflatex.js bibtex.js ./apps/
+RUN mkdir apps && mv pdflatex.js bibtex.js kpsewhich.js latexmk_config.pl ./apps/ && \
+    cp ./texlive/texmf-dist/scripts/latexmk/latexmk.pl ./apps/

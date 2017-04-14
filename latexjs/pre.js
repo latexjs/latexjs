@@ -62,7 +62,7 @@ var THINFS = {
       opts.dbFilePath = PATH.join(opts.cacheDir, 'thinfs_db.json')
       opts.dbCacheFilePath = PATH.join(opts.cacheDir, 'thinfs_db_cache.json')
       opts.dbURL = url.resolve(opts.remoteURL, 'thinfs_db.json')
-      opts.helperPath = PATH.join(opts.cacheDir, 'thinfs_helper.js')
+      opts.helperPath = PATH.join(opts.cacheDir, 'latex.js')
       if (!fs.existsSync(opts.cacheDir)) {
         if (THINFS.verbose) {
           console.log('Initializing THINFS cache at: ' + opts.cacheDir)

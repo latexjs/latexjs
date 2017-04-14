@@ -1,7 +1,7 @@
 FROM latexjs/latexjs
 RUN apt-get install nginx gettext-base -y && \
     ln -s /app/texlive /app/thinfs && \
-    gzip -9vk ./apps/* thinfs_db.json
+    gzip -9vk ./apps/* thinfs_db.json latexjs.json
 COPY nginx.conf /etc/nginx/.latexjs.template
 
 # forward request and error logs to docker log collector
