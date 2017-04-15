@@ -54,23 +54,41 @@ A particularly compelling use case is using `Latexjs` within an [Electron](https
 
 ## Deployment
 
-LatexJS is built in a series of Docker images that can be found on [our Docker Hub repo](https://hub.docker.com/r/latexjs/). The final image to run the server is [`latexjs/server`](https://hub.docker.com/r/latexjs/server/). Deployment (and update) looks like this:
+LatexJS is built in a series of Docker images that can be found on [our Docker Hub repo](https://hub.docker.com/r/latexjs/). The final image to run the server is [`latexjs/server`](https://hub.docker.com/r/latexjs/server/). Deployment (and update) is handled with `docker-compose`:
 ```
-docker pull latexjs/server && docker stop latexjs || docker rm latexjs || docker run --name=latexjs --restart=always -d -p 80:80 -p 443:443 latexjs/server
+docker-compose pull && docker compose down || docker-compose up -d
 ```
-#### Setting up SSL
+
+But first a little setup is needed (using DO one-click Docker 16.04)
+
+#### 1. Setting up SSL
 
 We use Docker + Let's Encrypt to initially get hold of a cert:
 
 ```
 docker run -it --rm -p 443:443 -p 80:80 --name certbot -v "/etc/letsencrypt:/etc/letsencrypt" -v "/var/lib/letsencrypt:/var/lib/letsencrypt" certbot/certbot certonly
 ```
-TODO when running our server we need to mount this volume so NGINX can see it (and update config for SSL)
 
 To renew:
 ```
 docker run -it --rm -p 443:443 -p 80:80 --name certbot -v "/etc/letsencrypt:/etc/letsencrypt" -v "/var/lib/letsencrypt:/var/lib/letsencrypt" certbot/certbot renew && docker restart latexjs
 ```
+
+#### 2. Setting up docker-compose
+```
+vim /usr/local/bin/docker-compose
+```
+Change version to `1.12`
+
+And download the latest `docker-compose.yml`
+```
+wget https://github.com/latexjs/latexjs/raw/master/docker-compose.yml
+```
+Finally, edit `./.env` to contain the server prefix: 
+```
+SERVER_LOCATION=london
+```
+
 ## Acknowledgments
 
 A huge thank you to [texlive.js](https://github.com/manuels/texlive.js) who were the first to figure out how to Emscripten TeX Live binaries.
