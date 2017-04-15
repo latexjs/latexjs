@@ -14,7 +14,7 @@ RUN wget http://mirror.ox.ac.uk/sites/ctan.org/systems/texlive/Source/texlive-20
 # process of pdftex etc uses some of these binaries, so we make them
 # natively so we can provide them below.
 RUN cd ./texlive_binary_build/texk/web2c && make pdftex && make bibtex
-# 3. Now attemt to make an emscripten build of pdftex - we know this 
+# 3. Now attemt to make an emscripten build of pdftex - we know this
 # will fail without the native binaries...
 RUN mkdir texlive_emscripten_build && cd ./texlive_emscripten_build && \
     EMCONFIGURE_JS=0 emconfigure ../texlive-*-source/configure \
@@ -29,7 +29,7 @@ RUN cd ./texlive_emscripten_build/texk/web2c && emmake make pdftex; exit 0
 # 4. Copy in the binaries from above and rebuild, this time we will succeed.
 RUN cd /app/texlive_binary_build/texk/web2c/ && \
     cp ctangle tangle tie pdftex-pool.c /app/texlive_emscripten_build/texk/web2c/ && \
-    cd /app/texlive_emscripten_build/texk/web2c/ && \ 
+    cd /app/texlive_emscripten_build/texk/web2c/ && \
     chmod 777 ctangle tangle tie pdftex-pool.c && \
     cd /app/texlive_binary_build/texk/web2c/web2c/ && \
     cp fixwrites splitup web2c /app/texlive_emscripten_build/texk/web2c/web2c/ && \
@@ -41,26 +41,24 @@ RUN cd ./texlive_emscripten_build/texk/web2c && emmake make pdftex \
 RUN cd ./texlive_emscripten_build/texk/web2c && emmake make bibtex \
         CC=emcc CFLAGS='-DELIDE_CODE -O3 --profiling-funcs' \
         -o tangle -o tie -o web2c -o pdftex-pool.c
-# All that's left to do is the final compile for both pdflatex.js, bibtex.js and kpsewhich.
-COPY pre.js latex.js latexjs.json bake_in_latexjs.py latexmk_config.pl demo.tex ./
-RUN python bake_in_latexjs.py && \
-    \
-    cp ./texlive_emscripten_build/texk/web2c/pdftex pdftex.bc && \
-    emcc -v --memory-init-file 0 -O3 --profiling-funcs \ 
+# All that's left to do is the final compile for both pdflatex.js, bibtex.js and kpsewhich.js.
+COPY pre.js latex.js latexjs.json latexmk_config.pl demo.tex ./
+RUN cp ./texlive_emscripten_build/texk/web2c/pdftex pdftex.bc && \
+    emcc -v --memory-init-file 0 -O3 --profiling-funcs \
     -s TOTAL_MEMORY=134217728 -s INVOKE_RUN=1 \
     --pre-js pre.js -o pdflatex.js pdftex.bc && \
     \
     cp ./texlive_emscripten_build/texk/web2c/bibtex bibtex.bc && \
-	emcc -v --memory-init-file 0 -O3 --profiling-funcs \ 
+	emcc -v --memory-init-file 0 -O3 --profiling-funcs \
     -s TOTAL_MEMORY=134217728 -s INVOKE_RUN=1 \
     --pre-js pre.js -o bibtex.js bibtex.bc && \
     \
     cp ./texlive_emscripten_build/texk/kpathsea/kpsewhich kpsewhich.bc && \
-    emcc -v --memory-init-file 0 -O3 --profiling-funcs \ 
+    emcc -v --memory-init-file 0 -O3 --profiling-funcs \
     -s INVOKE_RUN=1 \
     --pre-js pre.js -o kpsewhich.js kpsewhich.bc && \
     \
-    rm pdftex.bc bibtex.bc  kpsewhich.bc pre.js bake_in_latexjs.py latex.js
+    rm pdftex.bc bibtex.bc  kpsewhich.bc pre.js
 # Test everything is working.
 RUN node pdflatex.js --version && \
     node pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf demo.tex && \
@@ -71,5 +69,7 @@ RUN node pdflatex.js --version && \
 # TODO We will squash all this to keep it compact.
 RUN rm -rf texlive-*-source* texlive_binary_build texlive_emscripten_build
 # Tidy up the build apps into their own dir.
-RUN mkdir apps && mv pdflatex.js bibtex.js kpsewhich.js latexmk_config.pl ./apps/ && \
+RUN mkdir apps && mv latex.js pdflatex.js bibtex.js kpsewhich.js latexmk_config.pl ./apps/ && \
     cp ./texlive/texmf-dist/scripts/latexmk/latexmk.pl ./apps/
+COPY build_manifest.py ./
+RUN python build_manifest.py && rm build_manifest.py

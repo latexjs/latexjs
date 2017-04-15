@@ -4,25 +4,13 @@ var PATH = require('path')
 var process = require('process')
 var url = require('url')
 
-// When we build the container we will inject the source for the helper here
-var HELPER_SRC = "%%HELPER_JS_SRC%%"
-
-// Once per run we will replace the helper.js file with the latest to ensure it
-// is up to date.
-var HELPER_VALIDATED = false
-
 // This is ridiculous, but we need a synchronous download, and it's seemingly
 // not possible in the current node runtime - so we subprocess and wait on
-// the completion of that. For this task we have a small helper file which 
-// we call out to (typically at ~/.latexjs/thinfs_helper.js)
-function downloadSync(helperPath, url, dest, gzip, sha256) {
-  if (!HELPER_VALIDATED) {
-    console.log('Updating contents of ' + helperPath + ' with latest version...')
-    // We haven't checked if the helper is up to date yet...make sure it is!
-    fs.writeFileSync(helperPath, HELPER_SRC, { encoding: 'utf8' })
-    HELPER_VALIDATED = true
-  }
-  var args = [helperPath, 'download', url, dest]
+// the completion of that. For this task we have a small helper file which
+// we call out to. Typically all apps are installed in ~/.latexjs/apps/
+// so this helper file is as ~/.latexjs/apps/latex.js.
+function downloadSync(url, dest, gzip, sha256) {
+  var args = [PATH.join(__dirname, 'latex.js'), 'download', url, dest]
   if (gzip) {
     args.push('gzip')
   } else {
@@ -45,7 +33,7 @@ var THINFS = {
     verbose: false,
 
     // TODO how should this get invoked?
-    staticInit: function(cacheDir, remoteURL, verbose) {
+    staticInit: function(verbose) {
       THINFS.isWindows = !!process.platform.match(/^win/)
       THINFS.verbose = !!verbose
     },
@@ -62,7 +50,6 @@ var THINFS = {
       opts.dbFilePath = PATH.join(opts.cacheDir, 'thinfs_db.json')
       opts.dbCacheFilePath = PATH.join(opts.cacheDir, 'thinfs_db_cache.json')
       opts.dbURL = url.resolve(opts.remoteURL, 'thinfs_db.json')
-      opts.helperPath = PATH.join(opts.cacheDir, 'latex.js')
       if (!fs.existsSync(opts.cacheDir)) {
         if (THINFS.verbose) {
           console.log('Initializing THINFS cache at: ' + opts.cacheDir)
@@ -73,7 +60,7 @@ var THINFS = {
         if (THINFS.verbose) {
           console.log('No thinfs_db.json file: re-downloading...')
         }
-        downloadSync(opts.helperPath, opts.dbURL, opts.dbFilePath, true)
+        downloadSync(opts.dbURL, opts.dbFilePath, true)
         if (fs.existsSync(opts.dbCacheFilePath)) {
           // Remove the cache which will now be outdated.
           fs.unlinkSync(opts.dbCacheFilePath)
@@ -192,7 +179,7 @@ var THINFS = {
         var dbPath = THINFS.pathInDB(node)
         var opts = THINFS.getMountOpts(node)
         var record = THINFS.retrieveDbRecord(dbPath, opts)
-        downloadSync(opts.helperPath, url, cachePath, true, record.sha256)
+        downloadSync(url, cachePath, true, record.sha256)
     },
 
     synthesizeStat: function(stat, defaults) {
@@ -318,7 +305,7 @@ var THINFS = {
         }
       },
 
-      close: function (stream) {        
+      close: function (stream) {
         if (THINFS.verbose) {
           console.log('----------- THINFS.stream_ops.close: ' + THINFS.pathInCache(stream.node))
         }
@@ -396,10 +383,10 @@ if(typeof Module.preRun === "undefined") {
 
 Module.preRun.push(
     function() {
-        var os = require('os')
-        var path = require('path')
-        var process = require('process')
-        var LJS_DEBUG = process.env.LJS_DEBUG == 1
+        const os = require('os')
+        const path = require('path')
+        const process = require('process')
+        const LJS_DEBUG = process.env.LJS_DEBUG == 1
         if (LJS_DEBUG) {
             console.log('----------- LATEXJS - PDFTEX -----------')
             console.log('LJS_DEBUG mode enabled. ')
@@ -436,7 +423,16 @@ Module.preRun.push(
           console.log('LATEXJS_CACHE_DIR: ' + LATEXJS_CACHE_DIR)
           console.log('LATEXJS_REMOTE_URL: ' + LATEXJS_REMOTE_URL)
         }
-        THINFS.staticInit(LATEXJS_CACHE_DIR, LATEXJS_REMOTE_URL, LJS_DEBUG)
+
+        var manifestPath = path.join(LATEXJS_CACHE_DIR, 'latexjs.json')
+        var manifestUrl = path.join(LATEXJS_CACHE_DIR, 'latexjs.json')
+
+        if (!fs.existsSync(manifestPath)) {
+          downloadSync(LATEXJS_REMOTE_URL + '/latexjs.json', manifestPath, true)
+        }
+        var manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+        var thinfsPath = path.join(LATEXJS_CACHE_DIR, manifest.texlive_version)
+        THINFS.staticInit(LJS_DEBUG)
 
         if (process.env.KPATHSEA_DEBUG !== undefined) {
             console.log('Passing through KPATHSEA debug settings ' +
@@ -465,7 +461,7 @@ Module.preRun.push(
           // individual files from the remote full install of texlive that Latexjs maintains.
           FS.mount(THINFS,
           {
-            cacheDir: LATEXJS_CACHE_DIR,
+            cacheDir: thinfsPath,
             remoteURL: LATEXJS_REMOTE_URL
           }, '/app/texlive')
         }

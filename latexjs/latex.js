@@ -1,21 +1,21 @@
 'use strict'
-var cp = require('child_process')
-var process = require('process')
-var https = require('https')
-var os = require('os')
-var fs = require('fs')
-var path = require('path')
-var crypto = require('crypto')
-var url = require('url')
-var zlib = require('zlib')
+const cp = require('child_process')
+const process = require('process')
+const https = require('https')
+const os = require('os')
+const fs = require('fs')
+const path = require('path')
+const crypto = require('crypto')
+const url = require('url')
+const zlib = require('zlib')
 
-var DEFAULT_SERVERS = [
+const DEFAULT_SERVERS = [
     'https://london.latexjs.org',
     'https://sanfran.latexjs.org',
     'https://singapore.latexjs.org',
 ]
 
-function mkdirRecursiveSync(dir, mode){
+function mkdirRecursiveSync(dir, mode) {
     try {
         fs.mkdirSync(dir, mode)
     }
@@ -29,13 +29,28 @@ function mkdirRecursiveSync(dir, mode){
     }
 }
 
+function rmdirRecursiveSync(path) {
+  if (fs.existsSync(path)) {
+    fs.readdirSync(path).forEach(file => {
+      var curPath = path + "/" + file
+      if(fs.lstatSync(curPath).isDirectory()) {
+        rmdirRecursiveSync(curPath)
+      } else {
+        fs.unlinkSync(curPath)
+      }
+    })
+    fs.rmdirSync(path)
+  }
+}
+
+
 function callSelf(args, showStdOut) {
-  var fullArgs = [__filename].concat(args)
-  var opts = { encoding: 'utf8' }
+  const fullArgs = [__filename].concat(args)
+  const opts = { encoding: 'utf8' }
   if (showStdOut) {
     opts.stdio = 'inherit'
   }
-  var x = cp.spawnSync(process.execPath, fullArgs, opts)
+  const x = cp.spawnSync(process.execPath, fullArgs, opts)
   if (x.status !== 0) {
      throw new Error('Error calling latex.js: ' + x)
      process.exit(1)
@@ -50,43 +65,44 @@ function download(url, dest, gz_file, sha256, callback) {
         console.log('  SHA256 checksum: ' + sha256)
     }
 
-    var destDir = path.dirname(dest)
+    const destDir = path.dirname(dest)
     if (!fs.existsSync(path.dirname(dest))) {
         console.log('  Creating ' + destDir)
         mkdirRecursiveSync(destDir)
     }
+    let hash
     if (sha256 !== undefined) {
-        var hash = crypto.createHash('sha256')
+        hash = crypto.createHash('sha256')
     }
-    var file = fs.createWriteStream(dest)
+    const file = fs.createWriteStream(dest)
 
-    var request = https.get(url, function (response) {
+    const request = https.get(url, response => {
 
-        var totalLength = response.headers['content-length']
-        var processedLength = 0
-        
-        var responseContent = response
+        const totalLength = response.headers['content-length']
+        let processedLength = 0
+
+        let responseContent = response
         if (gz_file) {
             responseContent = response.pipe(zlib.createUnzip())
         }
         responseContent.pipe(file)
 
-        file.on('finish', function () {
+        file.on('finish', () => {
             console.log('')
             if (sha256 !== undefined) {
-                var checksum = hash.digest('hex')
+                const checksum = hash.digest('hex')
                 if (checksum !== sha256) {
                     console.log('  ERROR - checksum does not match:')
                     console.log('    Expected: ' + sha256)
                     console.log('      Actual: ' + checksum)
                     console.log('  Clearing up compromised file...')
-                    fs.unlink(dest, function () {
+                    fs.unlink(dest, () => {
                         callback('Error: checksum failure.')
                     })
-                    
+
                 }
             }
-            file.close(function (err) {
+            file.close(err => {
                 if (err) {
                     console.log('  Error closing file: ' + err)
                 }
@@ -94,23 +110,23 @@ function download(url, dest, gz_file, sha256, callback) {
             })
         })
 
-        response.on('data', function(d) {
+        response.on('data', d => {
             processedLength += d.byteLength
-            var prop = processedLength / totalLength
-            var pc = Math.round(prop * 100)
+            const prop = processedLength / totalLength
+            const pc = Math.round(prop * 100)
             process.stdout.write('    ...downloading: ' + pc + '%\r')
         })
 
-        responseContent.on('data', function(d) {
+        responseContent.on('data', d => {
             if (sha256 !== undefined) {
                 hash.update(d)
             }
         })
 
-        file.on('error', function (err) {
+        file.on('error',  err => {
             console.log('  Error downloading file: ' + err)
             console.log('  Deleting corrupted file...')
-            fs.unlink(dest, function () {
+            fs.unlink(dest, () => {
                 callback('Error: Download error.')
             })
         })
@@ -130,7 +146,7 @@ function downloadCommand(url, dest, compression_type, sha256) {
         url += '.gz'
     }
 
-    download(url, dest, gz_compressed_file, sha256, function (err) {
+    download(url, dest, gz_compressed_file, sha256, err => {
         if (err) {
             console.log('  Exiting with failure code (1)')
             process.exit(1)
@@ -142,10 +158,9 @@ function downloadCommand(url, dest, compression_type, sha256) {
 }
 
 function latencyCommand() {
-    var urls = Array.prototype.slice.call(arguments)    
-
-    urls.forEach(function (url) {
-        ping(url, function() {
+    const urls = Array.prototype.slice.call(arguments)
+    urls.forEach(url => {
+        ping(url, () => {
             console.log(url)
             process.exit(0)
         })
@@ -153,34 +168,70 @@ function latencyCommand() {
 }
 
 function installCommand() {
-    var installDir = path.resolve(os.homedir(), '.latexjs/')
-    var manifestPath = path.join(installDir, 'latexjs.json')
+    const installDir = path.resolve(os.homedir(), '.latexjs/')
+    const appsDir = path.join(installDir, 'apps')
+    const appsBackupDir = path.join(installDir, 'backup_apps')
+    const manifestPath = path.join(installDir, 'latexjs.json')
     if (!fs.existsSync(installDir)) {
         mkdirRecursiveSync(installDir)
     }
     console.log('Choosing server based on ping...')
-    var server = callSelf(['latency'].concat(DEFAULT_SERVERS)).trim()
+    const server = callSelf(['latency'].concat(DEFAULT_SERVERS)).trim()
     console.log('Chose ' + server)
-    console.log('Donwnloading mainfest (latexjs.json)')
+    console.log('Donwnloading manifest (latexjs.json)')
     callSelf(['download', server + '/latexjs.json', manifestPath, 'gzip'])
-
-    console.log('Donwnloading apps')
-    callSelf(['download', server + '/apps/pdflatex.js', path.join(installDir, 'apps', 'pdflatex.js'), 'gzip'], true)
-    callSelf(['download', server + '/apps/bibtex.js', path.join(installDir, 'apps', 'bibtex.js'), 'gzip'], true)
-    callSelf(['download', server + '/apps/kpsewhich.js', path.join(installDir, 'apps', 'kpsewhich.js'), 'gzip'], true)
-    callSelf(['download', server + '/apps/latexmk.pl', path.join(installDir, 'apps', 'latexmk.pl'), 'gzip'], true)
-    callSelf(['download', server + '/apps/latexmk_config.pl', path.join(installDir, 'apps', 'latexmk_config.pl'), 'gzip'], true)
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+    if (manifest.latexjs_version !== "1") {
+        throw new Error("Only version 1 of latexjs can be installed with this installer - current version is " + manifest.latexjs_version + ". Please acquire a newer installer.")
+    }
+    const existingApps = {}
+    if (fs.existsSync(appsBackupDir)) {
+        console.log('Removing old apps backup dir ' + appsBackupDir)
+        rmdirRecursiveSync(appsBackupDir)
+    }
+    if (fs.existsSync(appsDir)) {
+        console.log('Backing old apps dir to ' + appsBackupDir)
+        fs.renameSync(appsDir, appsBackupDir)
+        const files = fs.readdirSync(appsBackupDir)
+            .map(p => path.join(appsBackupDir, p))
+            .filter(p => fs.statSync(p).isFile())
+            .forEach(p => {
+                const hash = crypto.createHash('sha256')
+                const sha256 = hash.update(fs.readFileSync(p)).digest('hex')
+                existingApps[sha256] = p
+            })
+    }
+    console.log('Acquiring apps')
+    Object.keys(manifest.apps).forEach(app => {
+        const appPath = path.join(installDir, 'apps', app)
+        const appDir = path.dirname(appPath)
+        if (!fs.existsSync(appDir)) {
+            console.log('Creating ' + appDir)
+            mkdirRecursiveSync(appDir)
+        }
+        const sha256 = manifest.apps[app].sha256
+        if (existingApps[sha256] !== undefined) {
+            console.log('Keeping existing app (same checksum) for ' + appPath)
+            fs.renameSync(existingApps[sha256], appPath)
+        } else {
+            callSelf(['download', server + '/apps/' + app, appPath, 'gzip', manifest.apps[app].sha256], true)
+        }
+    })
+    if (fs.existsSync(appsBackupDir)) {
+        console.log('Removing apps backup dir ' + appsBackupDir)
+        rmdirRecursiveSync(appsBackupDir)
+    }
 }
 
-var COMMAND_FUNCTION = {
+const COMMAND_FUNCTION = {
     'download': downloadCommand,
     'latency': latencyCommand,
     'install': installCommand
 }
 
-var COMMAND = process.argv[2]
-var ARGS = process.argv.slice(3)
-var COMMAND_FUNC = COMMAND_FUNCTION[COMMAND]
+const COMMAND = process.argv[2]
+const ARGS = process.argv.slice(3)
+const COMMAND_FUNC = COMMAND_FUNCTION[COMMAND]
 
 if (COMMAND_FUNC === undefined) {
     console.log('Command not understood - options are: ' + Object.keys(COMMAND_FUNCTION).join(', '))
