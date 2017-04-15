@@ -18,7 +18,7 @@ node pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf main.tex
 
 #### How does this work?
 
-Latexjs uses Emscripten to compile TeX Live tools like `pdflatex` and `bibtex` to `asm.js`, a subset of javascript that modern interpreters can run at close to native speeds. 
+Latexjs uses Emscripten to compile TeX Live tools like `pdflatex` and `bibtex` to `asm.js`, a subset of javascript that modern interpreters can run at close to native speeds.
 
 Emscripten also provides a virtual file system for the compiled binary to run in, which can be controlled. Latexjs uses a custom Emscripten file system called `THINFS`, which handles all file system requests that the TeX Live binaries try to make to the TeX Live installation folder. `THINFS` dynamically downloads new files as required when a `fs.open` command is intercepted.
 
@@ -84,7 +84,7 @@ And download the latest `docker-compose.yml`
 ```
 wget https://github.com/latexjs/latexjs/raw/master/docker-compose.yml
 ```
-Finally, edit `./.env` to contain the server prefix: 
+Finally, edit `./.env` to contain the server prefix:
 ```
 SERVER_LOCATION=london
 ```
@@ -106,3 +106,10 @@ This code produces a TeX Live instance and a collection of Javascript files whic
 For details of this licensing, please see the [LICENSE.TL](http://texlive.latexjs.org/texlive/LICENSE.TL) and [LICENSE.CTAN](http://texlive.latexjs.org/texlive/LICENSE.CTAN) text files.
 
 TL;DR (IANAL) - you can use my code (`THINFS`, these build scripts) under a BSD-license, but the produced files (e.g. `pdflatex.js`) are licensed under the TeX Live licencing.
+
+
+
+## Running latexmk
+```
+perl ~/.latexjs/apps/latexmk.pl -r ~/.latexjs/apps/latexmk_config.pl -synctex=1 -interaction=nonstopmode -f -pdf main.tex
+```
