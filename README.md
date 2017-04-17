@@ -51,6 +51,37 @@ These distributions have installers, and the way they need to be installed is pl
 
 A particularly compelling use case is using `Latexjs` within an [Electron](https://electron.atom.io/) app, where an up to date version of `node` is guaranteed to be available.
 
+## Building
+
+Latexjs is built in a series of Docker containers.
+
+First
+
+
+#### Buiding latexmk Windows binary
+
+Unfortunately, to be a complete toolchain we need something like `latexmk` to be able to perform the correct number of executions of `pdflatex` and `bibtex`, and there isn't a good native (and hence Emscripten-able) or Javascript solution. As a stopgap, we currently use `latexmk` and rely on a system Perl interpreter for macOS Linux (a reasonably safe bet) and use `pp` to compile a standalone Windows binary of `latexmk` for Windows (where we can't guarantee at all that a perl interpreter will be kicking around).
+
+The steps I used to do this on Windows:
+
+1. Install [Strawberry Perl](http://strawberryperl.com/)
+2. Following [these instructions](http://www.cpan.org/modules/INSTALL.html) first install the cpanm tool:
+```
+cpan App::cpanminus
+```
+3. Then use this to install `pp`:
+```
+cpanm pp
+```
+
+With this done, we can now build a binary of latexmk:
+
+1. Download the latest version of [latexmk](www.phys.psu.edu/~collins/software/latexmk-jcc/)
+2. Run
+```
+pp -M FindBin -o latexmk.exe latexmk.pl
+```
+To build a single binary. Note that we manually include `FindBin` as we use this in our custom latexmk config perl script.
 
 ## Deployment
 
