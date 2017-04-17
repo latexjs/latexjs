@@ -68,26 +68,7 @@ The `latexjs/server` image can be bumped frequently to get security patches, `la
 
 To be a complete LaTeX toolchain we need something like `latexmk` to be able to perform the correct number of executions of `pdflatex` and `bibtex`, and unfortunately there isn't a good native (and hence Emscripten-able) or Javascript solution for this. As a stopgap, we currently use `latexmk` and rely on a system Perl interpreter for macOS/Linux (a reasonably safe bet) and use [`pp`](http://search.cpan.org/~autrijus/PAR/script/pp) to compile a standalone Windows binary of `latexmk` for Windows (where we can't guarantee at all that a perl interpreter will be kicking around).
 
-The steps I used to do this on Windows:
-
-1. Install [Strawberry Perl](http://strawberryperl.com/)
-2. Following [these instructions](http://www.cpan.org/modules/INSTALL.html) first install the cpanm tool:
-```
-cpan App::cpanminus
-```
-3. Then use this to install `pp`:
-```
-cpanm pp
-```
-
-With this done, we can now build a binary of latexmk:
-
-1. Download the latest version of [latexmk](www.phys.psu.edu/~collins/software/latexmk-jcc/)
-2. Run
-```
-pp -M FindBin -o latexmk.exe latexmk.pl
-```
-To build a Windows binary. Note that we manually include `FindBin` as we use this in our custom latexmk config perl script.
+See [latexjs/latexmk](https://github.com/latexjs/latexmk) for details.
 
 ## Deployment
 
