@@ -55,12 +55,18 @@ A particularly compelling use case is using `Latexjs` within an [Electron](https
 
 Latexjs is built in a series of Docker containers.
 
-First
+Our first image, `latexjs/texlive`, installs the latest `texlive` install, gzips every file, takes it's SHA1 checksum, and builds a THINFS DB file that can be used be the client to emulate all filesystem calls up until `open()`.
+
+Our second image, `latexjs/latexjs`, builds on this by installing Emscripten, downloading the latest `texlive` source, and compiles nessessary JS binaries.
+
+Our final image `latexjs/server`, builds on this to install `nginx` to serve this content. 
+
+The `latexjs/server` image can be bumped frequently to get security patches, `latexjs/latexjs` bumped for changes in our toolchain, and `latexjs/texlive` less frequently only when we discover any issues that need resolving in `texlive` for users. We use the experimental `--squash` flag to keep images small (the Emscripten install from source is 30GB!)
 
 
 #### Buiding latexmk Windows binary
 
-Unfortunately, to be a complete toolchain we need something like `latexmk` to be able to perform the correct number of executions of `pdflatex` and `bibtex`, and there isn't a good native (and hence Emscripten-able) or Javascript solution. As a stopgap, we currently use `latexmk` and rely on a system Perl interpreter for macOS Linux (a reasonably safe bet) and use `pp` to compile a standalone Windows binary of `latexmk` for Windows (where we can't guarantee at all that a perl interpreter will be kicking around).
+To be a complete LaTeX toolchain we need something like `latexmk` to be able to perform the correct number of executions of `pdflatex` and `bibtex`, and unfortunately there isn't a good native (and hence Emscripten-able) or Javascript solution for this. As a stopgap, we currently use `latexmk` and rely on a system Perl interpreter for macOS/Linux (a reasonably safe bet) and use [`pp`](http://search.cpan.org/~autrijus/PAR/script/pp) to compile a standalone Windows binary of `latexmk` for Windows (where we can't guarantee at all that a perl interpreter will be kicking around).
 
 The steps I used to do this on Windows:
 
@@ -81,7 +87,7 @@ With this done, we can now build a binary of latexmk:
 ```
 pp -M FindBin -o latexmk.exe latexmk.pl
 ```
-To build a single binary. Note that we manually include `FindBin` as we use this in our custom latexmk config perl script.
+To build a Windows binary. Note that we manually include `FindBin` as we use this in our custom latexmk config perl script.
 
 ## Deployment
 
