@@ -2,7 +2,6 @@ var fs = require('fs')
 var cp = require('child_process')
 var PATH = require('path')
 var process = require('process')
-var url = require('url')
 
 // This is ridiculous, but we need a synchronous download, and it's seemingly
 // not possible in the current node runtime - so we subprocess and wait on
@@ -22,6 +21,22 @@ function downloadSync(url, dest, gzip, sha256) {
   var x = cp.spawnSync(process.execPath, args, { stdio: 'inherit' })
   if (x.status !== 0) {
     throw new Error('Unable to download required file ' + dest + ' exiting.')
+  }
+}
+
+
+function serverLatencySync() {
+  var args = [PATH.join(__dirname, 'latex.js'), 'latency']
+  var x = cp.spawnSync(process.execPath, args, { encoding: 'utf8' })
+  if (x.status !== 0) {
+    throw new Error('Unable to test latency to Latexjs servers - exiting.')
+  } else {
+    var server = x.stdout.trim()
+    if (!server.startsWith('http')) {
+      throw new Error('Unable to test latency to Latexjs servers - exiting.')
+    } else {
+      return server
+    }
   }
 }
 
@@ -47,12 +62,14 @@ var THINFS = {
       // in the mountingNode.mount.ops object to be a good
       // Emscripten FS (I hope)...
       var opts = mount.opts
+      console.log(opts)
       opts.dbFilePath = PATH.join(opts.cacheDir, 'thinfs_db.json')
       opts.dbCacheFilePath = PATH.join(opts.cacheDir, 'thinfs_db_cache.json')
-      opts.dbURL = url.resolve(opts.remoteURL, 'thinfs_db.json')
+      opts.dbURL = opts.remoteURL + '/thinfs_db.json'
       if (!fs.existsSync(opts.cacheDir)) {
         if (THINFS.verbose) {
           console.log('Initializing THINFS cache at: ' + opts.cacheDir)
+          console.log('             from remote URL: ' + opts.remoteURL)
         }
         fs.mkdirSync(opts.cacheDir)
       }
@@ -60,7 +77,7 @@ var THINFS = {
         if (THINFS.verbose) {
           console.log('No thinfs_db.json file: re-downloading...')
         }
-        downloadSync(opts.dbURL, opts.dbFilePath, true)
+        downloadSync(opts.dbURL, opts.dbFilePath, true, opts.dbSha256)
         if (fs.existsSync(opts.dbCacheFilePath)) {
           // Remove the cache which will now be outdated.
           fs.unlinkSync(opts.dbCacheFilePath)
@@ -138,7 +155,7 @@ var THINFS = {
         var x = THINFS.pathInDBPartsReversed(node)
         x.parts.push('thinfs')
         x.parts.reverse()
-        return url.resolve(x.mountNode.mount.opts.remoteURL, x.parts.join('/'))
+        return x.mountNode.mount.opts.remoteURL + '/' + x.parts.join('/')
     },
 
     retrieveDbRecord: function(dbPath, opts) {
@@ -393,7 +410,6 @@ Module.preRun.push(
             console.log('Welcome to the dirty underbelly of the world of Latexjs.')
         }
         var DEFAULT_LATEXJS_CACHE_DIR = path.resolve(os.homedir(), '.latexjs/')
-        var DEFAULT_LATEXJS_REMOTE_URL = 'https://london.latexjs.org'
         var LATEXJS_CACHE_DIR
         var LATEXJS_REMOTE_URL
 
@@ -412,9 +428,9 @@ Module.preRun.push(
 
         if (process.env.LATEXJS_REMOTE_URL === undefined) {
           if (LJS_DEBUG) {
-            console.log('NO LATEXJS_REMOTE_URL environment variable set - defaulting to ' + DEFAULT_LATEXJS_REMOTE_URL)
+            console.log('NO LATEXJS_REMOTE_URL environment variable set - defaulting to picking nearest server from latency test')
           }
-          LATEXJS_REMOTE_URL = DEFAULT_LATEXJS_REMOTE_URL
+          LATEXJS_REMOTE_URL = serverLatencySync()
         } else {
           LATEXJS_REMOTE_URL = process.env.LATEXJS_REMOTE_URL
         }
@@ -431,7 +447,9 @@ Module.preRun.push(
           downloadSync(LATEXJS_REMOTE_URL + '/latexjs.json', manifestPath, true)
         }
         var manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-        var thinfsPath = path.join(LATEXJS_CACHE_DIR, manifest.texlive_version)
+        var thinfsPath = path.join(LATEXJS_CACHE_DIR, manifest.texlive.version)
+        var thinfsUrl = LATEXJS_REMOTE_URL + '/texlive/' + manifest.texlive.version
+        var thinfsDbSha256 = manifest.texlive.sha256
         THINFS.staticInit(LJS_DEBUG)
 
         if (process.env.KPATHSEA_DEBUG !== undefined) {
@@ -462,7 +480,8 @@ Module.preRun.push(
           FS.mount(THINFS,
           {
             cacheDir: thinfsPath,
-            remoteURL: LATEXJS_REMOTE_URL
+            remoteURL: thinfsUrl,
+            dbSha256: thinfsDbSha256
           }, '/app/texlive')
         }
 

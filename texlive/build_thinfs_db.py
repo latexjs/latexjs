@@ -26,6 +26,7 @@ from datetime import datetime
 import sys
 from time import time
 from os.path import join, isfile
+from os import unlink
 import gzip
 
 def progress_bar_str(percentage, bar_length=20, bar_marker='=', show_bar=True):
@@ -148,12 +149,11 @@ for path in print_progress(list(slim_stats)):
     full_path = join('/app/texlive/', path)
     if isfile(full_path):
         full_gz_path = full_path + '.gz'
-        if full_path.endswith('.gz'):
-            print('Double .gz.gz file: {}'.format(full_path))
         with open(full_path, 'rb') as f, gzip.open(full_gz_path, 'wb', compresslevel=9) as f_out:
             contents = f.read()
             slim_stats[path]['sha256'] = sha256(contents).hexdigest()
             f_out.write(contents)
+        unlink(full_path)
 
 with open('thinfs_db.json', 'wt') as f:
     json.dump({

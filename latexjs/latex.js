@@ -158,7 +158,10 @@ function downloadCommand(url, dest, compression_type, sha256) {
 }
 
 function latencyCommand() {
-    const urls = Array.prototype.slice.call(arguments)
+    let urls = Array.prototype.slice.call(arguments)
+    if (urls.length === 0) {
+        urls = DEFAULT_SERVERS
+    }
     urls.forEach(url => {
         ping(url, () => {
             console.log(url)
@@ -202,19 +205,27 @@ function installCommand() {
             })
     }
     console.log('Acquiring apps')
+    const currentPlatform = os.platform()
+    console.log('(current platform is ' + currentPlatform + ')')
     Object.keys(manifest.apps).forEach(app => {
+        const appSpec = manifest.apps[app]
+        if (appSpec.platforms !== undefined && appSpec.platforms.indexOf(currentPlatform) === -1) {
+            console.log('Skipping ' + app + ' - only required on ' + appSpec.platforms.join(', '))
+            return
+        }
         const appPath = path.join(installDir, 'apps', app)
+
         const appDir = path.dirname(appPath)
         if (!fs.existsSync(appDir)) {
             console.log('Creating ' + appDir)
             mkdirRecursiveSync(appDir)
         }
-        const sha256 = manifest.apps[app].sha256
+        const sha256 = appSpec.sha256
         if (existingApps[sha256] !== undefined) {
             console.log('Keeping existing app (same checksum) for ' + appPath)
             fs.renameSync(existingApps[sha256], appPath)
         } else {
-            callSelf(['download', server + '/apps/' + app, appPath, 'gzip', manifest.apps[app].sha256], true)
+            callSelf(['download', server + '/apps/' + app, appPath, 'gzip', appSpec.sha256], true)
         }
     })
     if (fs.existsSync(appsBackupDir)) {
