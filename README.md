@@ -6,7 +6,7 @@ There is no large monolithic latex distribution to install - Latexjs dynamically
 
 Here's the steps for getting going on any machine (Mac, Windows, or Linux) with `node` available:
 
-1. Download [`latex.js`](http://london.latexjs.org/apps/latex.js) and run 
+1. Download [`latex.js`](https://london.latexjs.org/latex.js) and run 
 ```
 node latex.js install
 ```
