@@ -70,7 +70,7 @@ Running
 ```
 node ~/.latexjs/apps/latex.js install
 ``` 
-Will perform an in-place upgrade. Before we need to use the `texlive.version` and `latexjs.version` options, upgrades will be made to Latex js to be able to handle these types of updates (for now only apps are updated).
+Will perform an in-place upgrade. Before we need to use the `texlive.version` and `latexjs.version` options, upgrades will be made to Latexjs to be able to handle these types of updates (for now only apps are updated).
 
 #### Where is this stuff hosted?
 
