@@ -37,7 +37,7 @@ The running binary is oblivious to the `THINFS` caching filesystem layer, so we 
 
 Here's everything I am aware of where behavior would differ from native equivalents:
 
-1. **All files to be processed need to be under the current working directory**. We mount the current working directory inside the Emscripten virtual file system - trying to access above that (`../`) won't work. We can work on fixing this.
+1. **All files to be processed (that aren't part of TeX Live) need to be under the current working directory**. We mount the current working directory inside the Emscripten virtual file system - trying to access above that (`../`) won't work.
 
 That's it for now.
 
@@ -57,6 +57,24 @@ LaTeX can be a bit of a pain to get going with on a machine. Generally speaking 
 These distributions have installers, and the way they need to be installed is platform specific. In general they are large monolithic downloads, and are a bit of a pain to keep up to date. `Latexjs` provides a simpler solution that works the same on any platform.
 
 A particularly compelling use case is using `Latexjs` within an [Electron](https://electron.atom.io/) app, where an up to date version of `node` is guaranteed to be available.
+
+#### How are updates handled?
+
+Latexjs is designed to be kept up to date continuously. There are three levels of versioning that are enforced in Latexjs:
+
+1. `latexjs.version` - a version number tracking the overall design of the system. We expect this version number to change _very_ infrequently (ideally, never!). Upgrades between these version numbers will be more involved. The present version number is `"1"`.
+2. `texlive.version` - a version number tracking the version of TeX Live that Latexjs currently uses. The current version is `"2016"`, and represents an up to date snapshot of TeX Live 2016 taken around the time Latexjs was devised (April 2017). Migration to newer ``texlive.version`` numbers is not presently supported but will be easy given the design of the system. The version number can increase in-between annual releases if new updates are deemed important for Latexjs users (e.g. `"2016.1"`)
+3. Invididual app checksums - each app has a checksum - newer versions of each app can be downloaded at a rate independent from ``texlive.version`` (say for instance we improve the performance by tweaking Emscripten settings - this doesn't require a new TeX Live version, but we can still push out new apps).
+
+Running
+```
+node ~/.latexjs/apps/latex.js install
+``` 
+Will perform an in-place upgrade. Before we need to use the `texlive.version` and `latexjs.version` options, upgrades will be made to Latex js to be able to handle these types of updates (for now only apps are updated).
+
+#### Where is this stuff hosted?
+
+For now I'm running three instances of the Latexjs servers in London, San Fransisco, and Singapore. Before a download starts the client determines the optimal server to talk to based on response time. The servers are simple deployments of the open Docker images that are outlined below, and all files are checksumed. Everything is served over SSL.
 
 ## Building
 
