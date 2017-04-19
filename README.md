@@ -43,7 +43,7 @@ That's it for now.
 
 #### How's the performance?
 
-Currently performance is anywhere for [3x-8x slower than native alternatives](./PERFORMANCE.md).
+Currently performance is anywhere for [2x-6x slower than native alternatives](./PERFORMANCE.md).
 We haven't focused on optimization yet, and are confident that we can lower that somewhat.
 
 #### Why make this?
