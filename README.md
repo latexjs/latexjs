@@ -76,6 +76,11 @@ Will perform an in-place upgrade. Before we need to use the `texlive.version` an
 
 For now I'm running three instances of the Latexjs servers in London, San Fransisco, and Singapore. Before a download starts the client determines the optimal server to talk to based on response time. The servers are simple deployments of the open Docker images that are outlined below, and all files are checksumed. Everything is served over SSL.
 
+
+#### Isn't that going to be really slow if you are always going to the server for files?
+
+**No**. This only happens the first time a new file is required, i.e. when a new package is processed by Latexjs for the first time. Subsequent runs are close to native speeds as the locally cached file is used.
+
 ## Building
 
 Latexjs is built in a series of Docker containers.
