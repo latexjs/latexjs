@@ -6,11 +6,18 @@ There is no large monolithic latex distribution to install - Latexjs dynamically
 
 Here's the steps for getting going on any machine (Mac, Windows, or Linux) with `node` available:
 
-1. Download [`pdflatex.js`](http://texlive.latexjs.org/apps/pdflatex.js) and [`bibtex.js`](http://texlive.latexjs.org/apps/bibtex.js)
-2. Use these tools exactly as you would normally use `pdflatex` and `bibtex`. For instance, to do a first compilation of a `main.tex` file to PDF, try:
+1. Download [`latex.js`](http://london.latexjs.org/apps/latex.js) and run 
 ```
-node pdflatex.js -synctex=1 -interaction=nonstopmode -output-format pdf main.tex
+node latex.js install
 ```
+to setup a minimal LaTeX toolchain at `~/.latexjs`.
+
+2. Run 
+```
+node ~/.latexjs/apps/latex.js compile ./main.tex
+``` 
+to trigger a compilation of the `main.tex` file with `latexmk`/`pdflatex`/`bibtex` with support for `synctex`. Note that **the file to be compiled must be a relative path that is within the current working directory**. This is about the only restriction of Latexjs vs directly using a native LaTeX installation.
+
 3. The exact files required from a complete up-to-date TeX Live install will be downloaded to a `~/.latexjs` cache from the Latexjs server. For my thesis, that's about 35MB.
 4. That's it. Latexjs will only download new files if they are required (i.e. you compile a different document which uses a new package).
 
@@ -124,10 +131,3 @@ This code produces a TeX Live instance and a collection of Javascript files whic
 For details of this licensing, please see the [LICENSE.TL](http://texlive.latexjs.org/texlive/LICENSE.TL) and [LICENSE.CTAN](http://texlive.latexjs.org/texlive/LICENSE.CTAN) text files.
 
 TL;DR (IANAL) - you can use my code (`THINFS`, these build scripts) under a BSD-license, but the produced files (e.g. `pdflatex.js`) are licensed under the TeX Live licencing.
-
-
-
-## Running latexmk
-```
-perl ~/.latexjs/apps/latexmk.pl -r ~/.latexjs/apps/latexmk_config.pl -synctex=1 -interaction=nonstopmode -f -pdf main.tex
-```
