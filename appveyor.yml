@@ -1,11 +1,14 @@
 # Test against the latest version of this Node.js version
 environment:
-  nodejs_version: "7"
+  nodejs_version: "4"
+  nodejs_version: ""
 
-# Install scripts. (runs after repo cloning)
+platform:
+  - x86
+  - x64
+
 install:
-  # Get the latest stable version of Node.js or io.js
-  - ps: Install-Product node $env:nodejs_version
+  - ps: Install-Product node $env:nodejs_version $env:platform
   - ps: Start-FileDownload 'https://sanfran.latexjs.org/latex.js' C:\\latex.js; echo "Done"
   - node C:\\latex.js install
 
@@ -14,7 +17,8 @@ test_script:
   # Output useful info for debugging.
   - node --version
   - npm --version
-  - node C:\Users\appveyor\.latexjs\apps\latex.js compile latexjs\demo.tex
+  - cd latexjs
+  - node C:\Users\appveyor\.latexjs\apps\latex.js compile demo.tex
 
 # Don't actually build.
 build: off
