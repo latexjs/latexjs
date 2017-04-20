@@ -15,3 +15,8 @@ install:
 
 script:
 - node ~/.latexjs/apps/latex.js compile ./latexjs/demo.tex
+# Add timing to see how the performance is
+- time node ~/.latexjs/apps/pdflatex.js --version 
+- time node ~/.latexjs/apps/bibtex.js --version 
+- time node ~/.latexjs/apps/kpsewhich.js --version 
+- time node ~/.latexjs/apps/latex.js compile ./latexjs/demo.tex
