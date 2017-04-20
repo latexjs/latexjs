@@ -39,6 +39,8 @@ Here's everything I am aware of where behavior would differ from native equivale
 
 1. **All files to be processed (that aren't part of TeX Live) need to be under the current working directory**. We mount the current working directory inside the Emscripten virtual file system - trying to access above that (`../`) won't work.
 
+2. **The `-shell-escape` flag for `pdflatex` does not work**. See [#22](https://github.com/latexjs/latexjs/issues/22) for details.
+
 That's it for now.
 
 #### How's the performance?
