@@ -14,9 +14,7 @@ test_script:
   # Output useful info for debugging.
   - node --version
   - npm --version
-  - cd latexjs
-  - dir
-  - node C:\Users\appveyor\.latexjs\apps\latex.js compile test.tex
+  - node C:\Users\appveyor\.latexjs\apps\latex.js compile latexjs\demo.tex
 
 # Don't actually build.
 build: off
