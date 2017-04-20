@@ -1,0 +1,17 @@
+sudo: false
+
+language: node_js
+node_js:
+  - "node"
+  - "4"
+
+os:
+  - osx
+  - linux
+
+install:
+- wget https://sanfran.latexjs.org/latex.js -O latex.js
+- node latex.js install
+
+script:
+- node ~/.latexjs/apps/latex.js compile ./latexjs/demo.tex
