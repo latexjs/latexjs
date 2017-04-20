@@ -23,4 +23,4 @@ script:
 - time node ~/.latexjs/apps/pdflatex.js --version 
 - time node ~/.latexjs/apps/bibtex.js --version 
 - time node ~/.latexjs/apps/kpsewhich.js --version
-- time node ~/.latexjs/apps/latex.js compile ./latexjs/demo.tex
+- time node ~/.latexjs/apps/latex.js compile ./test/demo.tex
