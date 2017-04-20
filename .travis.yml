@@ -14,9 +14,13 @@ install:
 - node latex.js install
 
 script:
-- node ~/.latexjs/apps/latex.js compile ./latexjs/demo.tex
+- mkdir test && cp ./latexjs/demo.tex ./test/
+# First, run the tool (building the cache)
+- node ~/.latexjs/apps/latex.js compile ./test/demo.tex
+# Clean the test dir and prepare to go again with timing.
+- rm -rf test && mkdir test && cp ./latexjs/demo.tex ./test/
 # Add timing to see how the performance is
 - time node ~/.latexjs/apps/pdflatex.js --version 
 - time node ~/.latexjs/apps/bibtex.js --version 
-- time node ~/.latexjs/apps/kpsewhich.js --version 
+- time node ~/.latexjs/apps/kpsewhich.js --version
 - time node ~/.latexjs/apps/latex.js compile ./latexjs/demo.tex
